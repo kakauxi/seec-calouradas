@@ -17,7 +17,8 @@ import {
   RefreshCw,
   UserPlus,
   Terminal,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -43,6 +44,7 @@ const Admin = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState('');
   const [isFetching, setIsFetching] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
@@ -111,16 +113,20 @@ const Admin = () => {
       return;
     }
 
+    setProcessingId(userId);
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
       .eq('id', userId);
 
     if (error) {
+      console.error("Erro ao atualizar cargo:", error);
       showError('Erro ao atualizar permissão.');
     } else {
       showSuccess(`Cargo atualizado!`);
+      await fetchData(true);
     }
+    setProcessingId(null);
   };
 
   const toggleApproval = async (userId: string, currentStatus: boolean, email: string) => {
@@ -129,16 +135,20 @@ const Admin = () => {
       return;
     }
 
+    setProcessingId(userId);
     const { error } = await supabase
       .from('profiles')
       .update({ is_approved: !currentStatus })
       .eq('id', userId);
 
     if (error) {
+      console.error("Erro ao atualizar aprovação:", error);
       showError('Erro ao atualizar status de aprovação.');
     } else {
       showSuccess(currentStatus ? 'Acesso revogado.' : 'Usuário aprovado!');
+      await fetchData(true);
     }
+    setProcessingId(null);
   };
 
   if (authLoading) return (
@@ -253,6 +263,7 @@ const Admin = () => {
               {filteredProfiles.length > 0 ? (
                 filteredProfiles.map(profile => {
                   const isOwner = profile.email === OWNER_EMAIL;
+                  const isProcessing = processingId === profile.id;
                   
                   return (
                     <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4 hover:shadow-md transition-shadow">
@@ -277,11 +288,13 @@ const Admin = () => {
                         <Button 
                           variant={profile.is_approved ? "outline" : "default"}
                           size="sm"
-                          disabled={isOwner}
+                          disabled={isOwner || isProcessing}
                           onClick={() => toggleApproval(profile.id, profile.is_approved, profile.email)}
                           className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
                         >
-                          {profile.is_approved ? (
+                          {isProcessing ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : profile.is_approved ? (
                             <><XCircle size={16} className="mr-2" /> Revogar</>
                           ) : (
                             <><CheckCircle2 size={16} className="mr-2" /> Aprovar</>
@@ -290,7 +303,7 @@ const Admin = () => {
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" disabled={isOwner} className="text-slate-500">
+                            <Button variant="ghost" size="sm" disabled={isOwner || isProcessing} className="text-slate-500">
                               Cargo <ChevronDown size={14} className="ml-1" />
                             </Button>
                           </DropdownMenuTrigger>
