@@ -16,7 +16,8 @@ import {
   XCircle,
   Lock,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -67,7 +68,11 @@ const Admin = () => {
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
-      showError("Não foi possível carregar os dados.");
+      if (err.message.includes('infinite recursion')) {
+        showError("Erro de permissão no banco. Por favor, execute o script SQL fornecido.");
+      } else {
+        showError("Não foi possível carregar os dados.");
+      }
     } finally {
       setIsFetching(false);
     }
@@ -120,7 +125,10 @@ const Admin = () => {
 
   if (authLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <RefreshCw className="animate-spin text-slate-400" size={32} />
+      <div className="flex flex-col items-center gap-4">
+        <RefreshCw className="animate-spin text-slate-400" size={32} />
+        <p className="text-slate-500 animate-pulse">Verificando credenciais...</p>
+      </div>
     </div>
   );
   
@@ -162,9 +170,15 @@ const Admin = () => {
 
       <main className="max-w-4xl mx-auto px-4">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700">
-            <AlertCircle size={20} />
-            <p className="text-sm">Erro ao carregar dados: {error}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 text-red-700">
+            <AlertCircle className="shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="font-bold">Erro de Sincronização</p>
+              <p className="text-sm opacity-90">{error}</p>
+              {error.includes('infinite recursion') && (
+                <p className="text-xs mt-2 font-medium underline">Dica: Execute o script SQL de correção no painel do Supabase.</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -195,7 +209,7 @@ const Admin = () => {
                   const isOwner = profile.email === OWNER_EMAIL;
                   
                   return (
-                    <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4">
+                    <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
                           {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
@@ -244,8 +258,17 @@ const Admin = () => {
                   );
                 })
               ) : (
-                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
+                <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <UserPlus className="text-slate-300" size={32} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
+                  <p className="text-slate-500 max-w-xs mx-auto mt-2">
+                    Se você acabou de criar uma conta, tente atualizar a lista ou verifique o SQL Editor.
+                  </p>
+                  <Button variant="outline" onClick={fetchData} className="mt-6 rounded-xl">
+                    <RefreshCw size={16} className="mr-2" /> Atualizar Agora
+                  </Button>
                 </div>
               )}
             </div>
@@ -255,7 +278,7 @@ const Admin = () => {
             <div className="space-y-3">
               {logs.length > 0 ? (
                 logs.map(log => (
-                  <Card key={log.id} className="p-4 bg-white border-none shadow-sm">
+                  <Card key={log.id} className="p-4 bg-white border-none shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -273,8 +296,8 @@ const Admin = () => {
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhum log registrado.</p>
+                <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                  <p className="text-muted-foreground">Nenhum log registrado ainda.</p>
                 </div>
               )}
             </div>
