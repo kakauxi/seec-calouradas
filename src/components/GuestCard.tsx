@@ -17,7 +17,7 @@ const GuestCard = ({ guest, onTogglePresence, onDelete }: GuestCardProps) => {
   return (
     <Card className={cn(
       "p-4 mb-3 transition-all duration-300 border-l-4",
-      guest.isPresent ? "border-l-green-500 bg-green-50/30" : "border-l-purple-500 bg-white"
+      guest.isPresent ? "border-l-green-500 bg-green-50/30" : "border-l-slate-900 bg-white"
     )}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
@@ -49,7 +49,7 @@ const GuestCard = ({ guest, onTogglePresence, onDelete }: GuestCardProps) => {
             onClick={() => onTogglePresence(guest.id)}
             className={cn(
               "rounded-full px-4",
-              guest.isPresent ? "bg-green-600 hover:bg-green-700" : "border-purple-200 text-purple-700 hover:bg-purple-50"
+              guest.isPresent ? "bg-green-600 hover:bg-green-700" : "border-slate-200 text-slate-900 hover:bg-slate-50"
             )}
           >
             {guest.isPresent ? (

@@ -15,12 +15,12 @@ const GuestStats = ({ total, present }: GuestStatsProps) => {
   return (
     <div className="grid grid-cols-2 gap-4 mb-8">
       <Card className="p-4 flex items-center space-x-4 bg-white border-none shadow-sm">
-        <div className="p-3 bg-purple-100 rounded-full text-purple-600">
+        <div className="p-3 bg-slate-100 rounded-full text-black">
           <Users size={24} />
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold text-purple-900">{total}</p>
+          <p className="text-2xl font-bold text-slate-900">{total}</p>
         </div>
       </Card>
       

@@ -64,15 +64,15 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <header className="bg-purple-700 text-white py-8 px-4 shadow-lg mb-8">
+      <header className="bg-black text-white py-8 px-4 shadow-lg mb-8">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2 rounded-lg">
+            <div className="bg-white/10 p-2 rounded-lg">
               <PartyPopper size={32} />
             </div>
             <div>
               <h1 className="text-2xl font-bold">SEEC Check-in</h1>
-              <p className="text-purple-100 text-sm">Gerencie seus convidados com facilidade</p>
+              <p className="text-slate-400 text-sm">Gerencie seus convidados com facilidade</p>
             </div>
           </div>
         </div>
