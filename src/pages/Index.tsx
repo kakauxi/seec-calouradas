@@ -101,6 +101,8 @@ const Index = () => {
       if (newStatus) {
         showSuccess(`${guest.name} chegou! 🎉`);
         logAction('Check-in', `Confirmou presença de ${guest.name}`);
+      } else {
+        logAction('Remover Presença', `Removeu presença de ${guest.name}`);
       }
     }
   };
