@@ -23,9 +23,10 @@ interface GuestCardProps {
   guest: Guest;
   onTogglePresence: (id: string) => void;
   onDelete: (id: string) => void;
+  canDelete?: boolean;
 }
 
-const GuestCard = ({ guest, onTogglePresence, onDelete }: GuestCardProps) => {
+const GuestCard = ({ guest, onTogglePresence, onDelete, canDelete = true }: GuestCardProps) => {
   return (
     <Card className={cn(
       "p-4 mb-3 transition-all duration-300 border-l-4",
@@ -53,34 +54,36 @@ const GuestCard = ({ guest, onTogglePresence, onDelete }: GuestCardProps) => {
         </div>
         
         <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 size={18} />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-2xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir convidado?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja remover <strong>{guest.name}</strong> da lista? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={() => onDelete(guest.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+          {canDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:bg-destructive/10"
                 >
-                  Confirmar Exclusão
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 size={18} />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir convidado?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja remover <strong>{guest.name}</strong> da lista? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onDelete(guest.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+                  >
+                    Confirmar Exclusão
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           
           <Button
             variant={guest.isPresent ? "default" : "outline"}

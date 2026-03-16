@@ -20,6 +20,8 @@ const Index = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const canManageList = role === 'admin_master';
+
   useEffect(() => {
     const savedGuests = localStorage.getItem('party-guests');
     if (savedGuests) {
@@ -32,6 +34,7 @@ const Index = () => {
   }, [guests]);
 
   const addGuest = (name: string, phone: string, isCourtesy: boolean) => {
+    if (!canManageList) return;
     const newGuest: Guest = {
       id: crypto.randomUUID(),
       name,
@@ -60,6 +63,7 @@ const Index = () => {
   };
 
   const deleteGuest = (id: string) => {
+    if (!canManageList) return;
     const guest = guests.find(g => g.id === id);
     if (guest) {
       logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
@@ -89,9 +93,9 @@ const Index = () => {
               <h1 className="text-xl font-bold">SEEC Check-in</h1>
               <div className="flex items-center gap-2">
                 <p className="text-slate-400 text-xs">{user?.email}</p>
-                {role === 'admin_master' && (
-                  <span className="bg-amber-500/20 text-amber-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>
-                )}
+                <span className="bg-white/10 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                  {role === 'admin_master' ? 'Admin' : role === 'membro' ? 'Membro' : 'Usuário'}
+                </span>
               </div>
             </div>
           </div>
@@ -118,7 +122,7 @@ const Index = () => {
       <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-12">
         <GuestStats total={guests.length} present={presentCount} />
         
-        <AddGuestForm onAdd={addGuest} />
+        {canManageList && <AddGuestForm onAdd={addGuest} />}
 
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -148,6 +152,7 @@ const Index = () => {
                   guest={guest}
                   onTogglePresence={togglePresence}
                   onDelete={deleteGuest}
+                  canDelete={canManageList}
                 />
               ))
             ) : (
@@ -165,6 +170,7 @@ const Index = () => {
                   guest={guest}
                   onTogglePresence={togglePresence}
                   onDelete={deleteGuest}
+                  canDelete={canManageList}
                 />
               ))
             ) : (

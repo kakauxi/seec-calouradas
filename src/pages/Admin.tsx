@@ -19,7 +19,8 @@ import {
   AlertCircle,
   UserPlus,
   Terminal,
-  UserCheck
+  UserCheck,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,6 +30,12 @@ import { Input } from '@/components/ui/input';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
@@ -48,7 +55,6 @@ const Admin = () => {
     setError(null);
     
     try {
-      // Buscar perfis
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -57,7 +63,6 @@ const Admin = () => {
       if (pError) throw pError;
       setProfiles(profilesData || []);
 
-      // Buscar logs
       const { data: logsData, error: lError } = await supabase
         .from('logs')
         .select('*')
@@ -81,13 +86,12 @@ const Admin = () => {
     }
   }, [role, fetchData]);
 
-  const toggleRole = async (userId: string, currentRole: string, email: string) => {
+  const updateRole = async (userId: string, newRole: string, email: string) => {
     if (email === OWNER_EMAIL) {
       showError('Não é possível alterar o cargo do proprietário.');
       return;
     }
 
-    const newRole = currentRole === 'admin_master' ? 'user' : 'admin_master';
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
@@ -96,7 +100,7 @@ const Admin = () => {
     if (error) {
       showError('Erro ao atualizar permissão.');
     } else {
-      showSuccess('Permissão atualizada com sucesso!');
+      showSuccess(`Cargo atualizado para ${newRole === 'admin_master' ? 'Admin' : newRole === 'membro' ? 'Membro' : 'Usuário'}!`);
       fetchData();
     }
   };
@@ -134,6 +138,17 @@ const Admin = () => {
   const filteredProfiles = profiles.filter(p => 
     p.email?.toLowerCase().includes(searchUser.toLowerCase())
   );
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin_master':
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Admin Master</Badge>;
+      case 'membro':
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Membro</Badge>;
+      default:
+        return <Badge variant="secondary">Usuário</Badge>;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -176,17 +191,7 @@ const Admin = () => {
                 <h3 className="text-lg font-bold text-amber-900">Ação Necessária no Banco de Dados</h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
                   Detectamos um erro de <strong>recursão infinita</strong> ou usuários faltando. 
-                  Isso acontece quando as políticas de segurança entram em loop ou perfis não foram criados.
                 </p>
-                <div className="bg-white/50 p-4 rounded-xl border border-amber-200">
-                  <p className="text-xs font-semibold text-amber-900 mb-2 uppercase tracking-wider">Como resolver:</p>
-                  <ol className="text-xs text-amber-800 space-y-2 list-decimal ml-4">
-                    <li>Abra o <strong>SQL Editor</strong> no seu painel do Supabase.</li>
-                    <li>Copie o <strong>Script de Sincronização</strong> enviado no chat.</li>
-                    <li>Cole e clique em <strong>Run</strong>.</li>
-                    <li>Após isso, clique no botão de atualizar abaixo.</li>
-                  </ol>
-                </div>
                 <Button 
                   onClick={fetchData} 
                   className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
@@ -235,9 +240,7 @@ const Admin = () => {
                             {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
                           </p>
                           <div className="flex gap-2 mt-1">
-                            <Badge variant={profile.role === 'admin_master' ? 'default' : 'secondary'} className={profile.role === 'admin_master' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none' : ''}>
-                              {profile.role === 'admin_master' ? 'Admin Master' : 'Usuário'}
-                            </Badge>
+                            {getRoleBadge(profile.role)}
                             <Badge variant={profile.is_approved ? 'outline' : 'destructive'} className={profile.is_approved ? 'border-green-200 text-green-700 bg-green-50' : ''}>
                               {profile.is_approved ? 'Aprovado' : 'Pendente'}
                             </Badge>
@@ -260,15 +263,24 @@ const Admin = () => {
                           )}
                         </Button>
                         
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          disabled={isOwner}
-                          onClick={() => toggleRole(profile.id, profile.role, profile.email)}
-                          className="text-slate-500"
-                        >
-                          Alterar Cargo
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" disabled={isOwner} className="text-slate-500">
+                              Cargo <ChevronDown size={14} className="ml-1" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem onClick={() => updateRole(profile.id, 'admin_master', profile.email)}>
+                              Admin Master
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateRole(profile.id, 'membro', profile.email)}>
+                              Membro
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateRole(profile.id, 'user', profile.email)}>
+                              Usuário Comum
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </Card>
                   );
@@ -279,9 +291,6 @@ const Admin = () => {
                     <UserPlus className="text-slate-300" size={32} />
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
-                  <p className="text-slate-500 max-w-xs mx-auto mt-2">
-                    Se você sabe que existem usuários cadastrados, rode o <strong>Script de Sincronização</strong> no SQL Editor do Supabase.
-                  </p>
                   <Button variant="outline" onClick={fetchData} className="mt-6 rounded-xl">
                     <RefreshCw size={16} className="mr-2" /> Atualizar Agora
                   </Button>

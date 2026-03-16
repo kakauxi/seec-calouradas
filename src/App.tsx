@@ -25,6 +25,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Se não estiver aprovado e não for o admin master, redireciona para página de pendência
+  // Agora permitimos 'admin_master' e 'membro' (se aprovado)
   if (!isApproved && role !== 'admin_master') {
     return <PendingApproval />;
   }
