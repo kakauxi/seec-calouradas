@@ -100,7 +100,7 @@ const Admin = () => {
     if (error) {
       showError('Erro ao atualizar permissão.');
     } else {
-      showSuccess(`Cargo atualizado para ${newRole === 'admin_master' ? 'Admin' : newRole === 'membro' ? 'Membro' : 'Usuário'}!`);
+      showSuccess(`Cargo atualizado para ${newRole === 'admin_master' ? 'Admin' : newRole === 'coordenador' ? 'Coordenador' : newRole === 'membro' ? 'Membro' : 'Usuário'}!`);
       fetchData();
     }
   };
@@ -143,6 +143,8 @@ const Admin = () => {
     switch (role) {
       case 'admin_master':
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Admin Master</Badge>;
+      case 'coordenador':
+        return <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none">Coordenador</Badge>;
       case 'membro':
         return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Membro</Badge>;
       default:
@@ -272,6 +274,9 @@ const Admin = () => {
                           <DropdownMenuContent align="end" className="rounded-xl">
                             <DropdownMenuItem onClick={() => updateRole(profile.id, 'admin_master', profile.email)}>
                               Admin Master
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateRole(profile.id, 'coordenador', profile.email)}>
+                              Coordenador
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => updateRole(profile.id, 'membro', profile.email)}>
                               Membro

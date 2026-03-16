@@ -20,7 +20,9 @@ const Index = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const canManageList = role === 'admin_master';
+  // Permissões refinadas
+  const canAddGuests = role === 'admin_master' || role === 'coordenador';
+  const canDeleteGuests = role === 'admin_master';
 
   useEffect(() => {
     const savedGuests = localStorage.getItem('party-guests');
@@ -34,7 +36,7 @@ const Index = () => {
   }, [guests]);
 
   const addGuest = (name: string, phone: string, isCourtesy: boolean) => {
-    if (!canManageList) return;
+    if (!canAddGuests) return;
     const newGuest: Guest = {
       id: crypto.randomUUID(),
       name,
@@ -63,7 +65,7 @@ const Index = () => {
   };
 
   const deleteGuest = (id: string) => {
-    if (!canManageList) return;
+    if (!canDeleteGuests) return;
     const guest = guests.find(g => g.id === id);
     if (guest) {
       logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
@@ -94,7 +96,7 @@ const Index = () => {
               <div className="flex items-center gap-2">
                 <p className="text-slate-400 text-xs">{user?.email}</p>
                 <span className="bg-white/10 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                  {role === 'admin_master' ? 'Admin' : role === 'membro' ? 'Membro' : 'Usuário'}
+                  {role === 'admin_master' ? 'Admin' : role === 'coordenador' ? 'Coordenador' : role === 'membro' ? 'Membro' : 'Usuário'}
                 </span>
               </div>
             </div>
@@ -122,7 +124,7 @@ const Index = () => {
       <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-12">
         <GuestStats total={guests.length} present={presentCount} />
         
-        {canManageList && <AddGuestForm onAdd={addGuest} />}
+        {canAddGuests && <AddGuestForm onAdd={addGuest} />}
 
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -152,7 +154,7 @@ const Index = () => {
                   guest={guest}
                   onTogglePresence={togglePresence}
                   onDelete={deleteGuest}
-                  canDelete={canManageList}
+                  canDelete={canDeleteGuests}
                 />
               ))
             ) : (
@@ -170,7 +172,7 @@ const Index = () => {
                   guest={guest}
                   onTogglePresence={togglePresence}
                   onDelete={deleteGuest}
-                  canDelete={canManageList}
+                  canDelete={canDeleteGuests}
                 />
               ))
             ) : (
