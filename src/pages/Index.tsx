@@ -31,7 +31,7 @@ const Index = () => {
     const { data, error } = await supabase
       .from('guests')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true }); // Ordenação alfabética
 
     if (error) {
       showError('Erro ao carregar lista de convidados.');
@@ -75,11 +75,20 @@ const Index = () => {
 
   const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
+
+    // Validação de duplicidade (case-insensitive e removendo espaços extras)
+    const normalizedName = name.trim().toLowerCase();
+    const isDuplicate = guests.some(g => g.name.trim().toLowerCase() === normalizedName);
+
+    if (isDuplicate) {
+      showError(`O nome "${name}" já está na lista!`);
+      return;
+    }
     
     const { error } = await supabase
       .from('guests')
       .insert([{ 
-        name, 
+        name: name.trim(), 
         phone, 
         is_courtesy: isCourtesy,
         is_present: false 
