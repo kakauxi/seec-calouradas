@@ -71,7 +71,7 @@ const Index = () => {
               <PartyPopper size={32} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Party Check-in</h1>
+              <h1 className="text-2xl font-bold">SEEC Check-in</h1>
               <p className="text-purple-100 text-sm">Gerencie seus convidados com facilidade</p>
             </div>
           </div>
