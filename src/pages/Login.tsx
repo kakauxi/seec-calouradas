@@ -64,6 +64,18 @@ const Login = () => {
                 loading_button_label: 'Cadastrando...',
                 link_text: 'Não tem uma conta? Cadastre-se',
               },
+              forgot_password: {
+                email_label: 'E-mail',
+                password_label: 'Senha',
+                button_label: 'Enviar instruções',
+                loading_button_label: 'Enviando...',
+                link_text: 'Esqueceu sua senha?',
+              },
+              update_password: {
+                password_label: 'Nova senha',
+                button_label: 'Atualizar senha',
+                loading_button_label: 'Atualizando...',
+              },
             }
           }}
           providers={[]}
