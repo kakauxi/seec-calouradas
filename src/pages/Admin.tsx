@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, 
   Users, 
@@ -29,6 +29,7 @@ const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
 const Admin = () => {
   const { role, loading } = useAuth();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState('');
@@ -102,7 +103,12 @@ const Admin = () => {
       <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="text-white hover:bg-white/10">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate('/')} 
+              className="text-white hover:bg-white/10"
+            >
               <ArrowLeft size={20} />
             </Button>
             <div className="flex items-center gap-3">
