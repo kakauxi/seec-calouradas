@@ -55,6 +55,7 @@ const Admin = () => {
     setError(null);
     
     try {
+      // Buscar perfis
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -63,6 +64,7 @@ const Admin = () => {
       if (pError) throw pError;
       setProfiles(profilesData || []);
 
+      // Buscar logs
       const { data: logsData, error: lError } = await supabase
         .from('logs')
         .select('*')
@@ -75,6 +77,7 @@ const Admin = () => {
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
+      showError('Erro ao carregar dados. Verifique as permissões no banco.');
     } finally {
       setIsFetching(false);
     }
@@ -183,16 +186,17 @@ const Admin = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4">
-        {error && error.includes('infinite recursion') && (
+        {error && (
           <Card className="mb-8 border-amber-200 bg-amber-50 p-6 rounded-3xl shadow-sm">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-amber-100 rounded-2xl text-amber-600">
                 <Terminal size={24} />
               </div>
               <div className="space-y-3">
-                <h3 className="text-lg font-bold text-amber-900">Ação Necessária no Banco de Dados</h3>
+                <h3 className="text-lg font-bold text-amber-900">Ação Necessária</h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
-                  Detectamos um erro de <strong>recursão infinita</strong> ou usuários faltando. 
+                  Ocorreu um erro ao carregar os usuários: <strong>{error}</strong>. 
+                  Isso geralmente indica que as políticas de segurança (RLS) precisam ser ajustadas no Supabase.
                 </p>
                 <Button 
                   onClick={fetchData} 
@@ -296,6 +300,7 @@ const Admin = () => {
                     <UserPlus className="text-slate-300" size={32} />
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
+                  <p className="text-slate-500 text-sm mt-1">Tente atualizar a página ou verifique se há novos cadastros.</p>
                   <Button variant="outline" onClick={fetchData} className="mt-6 rounded-xl">
                     <RefreshCw size={16} className="mr-2" /> Atualizar Agora
                   </Button>
