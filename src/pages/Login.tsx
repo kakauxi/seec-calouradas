@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
-import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { showError, showSuccess } from '@/utils/toast';
 
 const Login = () => {
@@ -18,10 +19,19 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     if (session) {
       navigate('/');
+    }
+    
+    // Carregar e-mail lembrado
+    const savedEmail = localStorage.getItem('remembered_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
     }
   }, [session, navigate]);
 
@@ -37,6 +47,12 @@ const Login = () => {
     if (error) {
       showError(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos.' : error.message);
     } else {
+      // Salvar ou remover e-mail lembrado
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+      } else {
+        localStorage.removeItem('remembered_email');
+      }
       showSuccess('Bem-vindo de volta!');
     }
     setLoading(false);
@@ -118,15 +134,37 @@ const Login = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 rounded-xl border-slate-200"
+                    className="pl-10 pr-10 rounded-xl border-slate-200"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
+
+              <div className="flex items-center space-x-2 py-2">
+                <Checkbox 
+                  id="remember" 
+                  checked={rememberMe} 
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-slate-600"
+                >
+                  Lembrar meu e-mail
+                </label>
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full bg-black hover:bg-slate-800 text-white rounded-xl py-6 font-bold transition-all"
@@ -161,13 +199,20 @@ const Login = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <Input
                     id="signup-password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 rounded-xl border-slate-200"
+                    className="pl-10 pr-10 rounded-xl border-slate-200"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
               <div className="space-y-2">
@@ -176,11 +221,11 @@ const Login = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <Input
                     id="confirm-password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Repita sua senha"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10 rounded-xl border-slate-200"
+                    className="pl-10 pr-10 rounded-xl border-slate-200"
                     required
                   />
                 </div>
