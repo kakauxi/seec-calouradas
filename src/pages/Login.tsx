@@ -56,6 +56,7 @@ const Login = () => {
                 loading_button_label: 'Entrando...',
                 social_provider_text: 'Entrar com {{provider}}',
                 link_text: 'Já tem uma conta? Entre',
+                forgot_password_link_text: 'Esqueceu sua senha?',
               },
               sign_up: {
                 email_label: 'E-mail',
@@ -69,7 +70,7 @@ const Login = () => {
                 password_label: 'Senha',
                 button_label: 'Enviar instruções',
                 loading_button_label: 'Enviando...',
-                link_text: 'Esqueceu sua senha?',
+                link_text: 'Voltar para o login',
               },
               update_password: {
                 password_label: 'Nova senha',
