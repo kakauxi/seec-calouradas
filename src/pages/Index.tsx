@@ -6,10 +6,11 @@ import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Users, Gift } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import logo from '@/assets/logo.png';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -28,12 +29,13 @@ const Index = () => {
     localStorage.setItem('party-guests', JSON.stringify(guests));
   }, [guests]);
 
-  const addGuest = (name: string, phone: string) => {
+  const addGuest = (name: string, phone: string, isCourtesy: boolean) => {
     const newGuest: Guest = {
       id: crypto.randomUUID(),
       name,
       phone,
       isPresent: false,
+      isCourtesy,
       createdAt: Date.now(),
     };
     setGuests(prev => [newGuest, ...prev]);
@@ -59,6 +61,9 @@ const Index = () => {
     guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     guest.phone.includes(searchTerm)
   );
+
+  const normalGuests = filteredGuests.filter(g => !g.isCourtesy);
+  const courtesyGuests = filteredGuests.filter(g => g.isCourtesy);
 
   const presentCount = guests.filter(g => g.isPresent).length;
 
@@ -94,28 +99,50 @@ const Index = () => {
           />
         </div>
 
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4 px-1">
-            {searchTerm ? 'Resultados da busca' : 'Lista de Convidados'}
-          </h2>
-          
-          {filteredGuests.length > 0 ? (
-            filteredGuests.map(guest => (
-              <GuestCard
-                key={guest.id}
-                guest={guest}
-                onTogglePresence={togglePresence}
-                onDelete={deleteGuest}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-              <p className="text-muted-foreground">
-                {searchTerm ? 'Nenhum convidado encontrado.' : 'A lista está vazia. Adicione convidados acima!'}
-              </p>
-            </div>
-          )}
-        </div>
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
+            <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Users size={16} className="mr-2" /> Geral ({normalGuests.length})
+            </TabsTrigger>
+            <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Gift size={16} className="mr-2" /> Cortesias ({courtesyGuests.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="space-y-1">
+            {normalGuests.length > 0 ? (
+              normalGuests.map(guest => (
+                <GuestCard
+                  key={guest.id}
+                  guest={guest}
+                  onTogglePresence={togglePresence}
+                  onDelete={deleteGuest}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <p className="text-muted-foreground">Nenhum convidado normal na lista.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="courtesy" className="space-y-1">
+            {courtesyGuests.length > 0 ? (
+              courtesyGuests.map(guest => (
+                <GuestCard
+                  key={guest.id}
+                  guest={guest}
+                  onTogglePresence={togglePresence}
+                  onDelete={deleteGuest}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <p className="text-muted-foreground">Nenhuma cortesia na lista.</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
       
       <MadeWithDyad />

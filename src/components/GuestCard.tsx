@@ -4,7 +4,7 @@ import React from 'react';
 import { Guest } from '@/types/guest';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Circle, Trash2, Phone } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, Phone, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from '@/components/ui/badge';
 
 interface GuestCardProps {
   guest: Guest;
@@ -32,12 +33,19 @@ const GuestCard = ({ guest, onTogglePresence, onDelete }: GuestCardProps) => {
     )}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <h3 className={cn(
-            "font-semibold text-lg",
-            guest.isPresent && "text-green-700 line-through opacity-70"
-          )}>
-            {guest.name}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className={cn(
+              "font-semibold text-lg",
+              guest.isPresent && "text-green-700 line-through opacity-70"
+            )}>
+              {guest.name}
+            </h3>
+            {guest.isCourtesy && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-none flex items-center gap-1">
+                <Gift size={12} /> Cortesia
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center text-sm text-muted-foreground mt-1">
             <Phone size={14} className="mr-1" />
             {guest.phone}

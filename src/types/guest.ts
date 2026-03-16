@@ -3,5 +3,6 @@ export interface Guest {
   name: string;
   phone: string;
   isPresent: boolean;
+  isCourtesy: boolean;
   createdAt: number;
 }
