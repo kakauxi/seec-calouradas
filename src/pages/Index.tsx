@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Guest } from '@/types/guest';
 import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
@@ -26,8 +26,8 @@ const Index = () => {
   const canAddGuests = role === 'admin_master' || role === 'coordenador';
   const canDeleteGuests = role === 'admin_master';
 
-  const fetchGuests = async () => {
-    setLoading(true);
+  const fetchGuests = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data, error } = await supabase
       .from('guests')
       .select('*')
@@ -45,39 +45,49 @@ const Index = () => {
         createdAt: new Date(g.created_at).getTime()
       })));
     }
-    setLoading(false);
-  };
+    if (!silent) setLoading(false);
+  }, []);
 
   useEffect(() => {
     fetchGuests();
-  }, []);
+
+    // Configurar Realtime para a tabela de convidados
+    const channel = supabase
+      .channel('guests-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'guests'
+        },
+        () => {
+          // Atualiza a lista silenciosamente quando houver qualquer mudança
+          fetchGuests(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchGuests]);
 
   const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('guests')
       .insert([{ 
         name, 
         phone, 
         is_courtesy: isCourtesy,
         is_present: false 
-      }])
-      .select()
-      .single();
+      }]);
 
     if (error) {
       showError('Erro ao salvar convidado no banco de dados.');
     } else {
-      const newGuest: Guest = {
-        id: data.id,
-        name: data.name,
-        phone: data.phone || '',
-        isPresent: data.is_present,
-        isCourtesy: data.is_courtesy,
-        createdAt: new Date(data.created_at).getTime(),
-      };
-      setGuests(prev => [newGuest, ...prev]);
       showSuccess(`${name} adicionado à lista!`);
       logAction('Adicionar Convidado', `Adicionou ${name} (${isCourtesy ? 'Cortesia' : 'Pagante'})`);
     }
@@ -97,7 +107,6 @@ const Index = () => {
     if (error) {
       showError('Erro ao atualizar presença.');
     } else {
-      setGuests(prev => prev.map(g => g.id === id ? { ...g, isPresent: newStatus } : g));
       if (newStatus) {
         showSuccess(`${guest.name} chegou! 🎉`);
         logAction('Check-in', `Confirmou presença de ${guest.name}`);
@@ -123,7 +132,6 @@ const Index = () => {
       if (guest) {
         logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
       }
-      setGuests(prev => prev.filter(g => g.id !== id));
       showSuccess('Convidado removido.');
     }
   };
@@ -160,7 +168,7 @@ const Index = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={fetchGuests}
+              onClick={() => fetchGuests()}
               className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />

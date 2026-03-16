@@ -48,10 +48,10 @@ const Admin = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     if (role !== 'admin_master') return;
     
-    setIsFetching(true);
+    if (!silent) setIsFetching(true);
     setError(null);
     
     try {
@@ -77,15 +77,34 @@ const Admin = () => {
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
-      showError('Erro ao carregar dados. Verifique as permissões no banco.');
+      if (!silent) showError('Erro ao carregar dados.');
     } finally {
-      setIsFetching(false);
+      if (!silent) setIsFetching(false);
     }
   }, [role]);
 
   useEffect(() => {
     if (role === 'admin_master') {
       fetchData();
+
+      // Configurar Realtime para perfis e logs
+      const profilesChannel = supabase
+        .channel('admin-realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles' },
+          () => fetchData(true)
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'logs' },
+          () => fetchData(true)
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(profilesChannel);
+      };
     }
   }, [role, fetchData]);
 
@@ -103,8 +122,7 @@ const Admin = () => {
     if (error) {
       showError('Erro ao atualizar permissão.');
     } else {
-      showSuccess(`Cargo atualizado para ${newRole === 'admin_master' ? 'Admin' : newRole === 'coordenador' ? 'Coordenador' : newRole === 'membro' ? 'Membro' : 'Usuário'}!`);
-      fetchData();
+      showSuccess(`Cargo atualizado!`);
     }
   };
 
@@ -122,8 +140,7 @@ const Admin = () => {
     if (error) {
       showError('Erro ao atualizar status de aprovação.');
     } else {
-      showSuccess(currentStatus ? 'Acesso revogado.' : 'Usuário aprovado com sucesso!');
-      fetchData();
+      showSuccess(currentStatus ? 'Acesso revogado.' : 'Usuário aprovado!');
     }
   };
 
@@ -176,7 +193,7 @@ const Admin = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={fetchData}
+            onClick={() => fetchData()}
             disabled={isFetching}
             className="text-white hover:bg-white/10"
           >
@@ -196,10 +213,9 @@ const Admin = () => {
                 <h3 className="text-lg font-bold text-amber-900">Ação Necessária</h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
                   Ocorreu um erro ao carregar os usuários: <strong>{error}</strong>. 
-                  Isso geralmente indica que as políticas de segurança (RLS) precisam ser ajustadas no Supabase.
                 </p>
                 <Button 
-                  onClick={fetchData} 
+                  onClick={() => fetchData()} 
                   className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
                 >
                   <RefreshCw size={16} className="mr-2" /> Tentar Novamente
@@ -301,7 +317,7 @@ const Admin = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
                   <p className="text-slate-500 text-sm mt-1">Tente atualizar a página ou verifique se há novos cadastros.</p>
-                  <Button variant="outline" onClick={fetchData} className="mt-6 rounded-xl">
+                  <Button variant="outline" onClick={() => fetchData()} className="mt-6 rounded-xl">
                     <RefreshCw size={16} className="mr-2" /> Atualizar Agora
                   </Button>
                 </div>
