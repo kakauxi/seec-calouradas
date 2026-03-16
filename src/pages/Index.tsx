@@ -5,6 +5,7 @@ import { Guest } from '@/types/guest';
 import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
+import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Search, Users, Gift, CreditCard } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
@@ -68,7 +69,7 @@ const Index = () => {
   const presentCount = guests.filter(g => g.isPresent).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 pb-10">
       {/* Header */}
       <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
@@ -145,6 +146,7 @@ const Index = () => {
         </Tabs>
       </main>
       
+      <Footer />
       <MadeWithDyad />
     </div>
   );
