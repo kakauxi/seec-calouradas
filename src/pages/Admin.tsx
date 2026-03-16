@@ -17,7 +17,8 @@ import {
   Lock,
   RefreshCw,
   AlertCircle,
-  UserPlus
+  UserPlus,
+  Terminal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -68,11 +69,6 @@ const Admin = () => {
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
-      if (err.message.includes('infinite recursion')) {
-        showError("Erro de permissão no banco. Por favor, execute o script SQL fornecido.");
-      } else {
-        showError("Não foi possível carregar os dados.");
-      }
     } finally {
       setIsFetching(false);
     }
@@ -169,17 +165,36 @@ const Admin = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 text-red-700">
-            <AlertCircle className="shrink-0 mt-0.5" size={20} />
-            <div>
-              <p className="font-bold">Erro de Sincronização</p>
-              <p className="text-sm opacity-90">{error}</p>
-              {error.includes('infinite recursion') && (
-                <p className="text-xs mt-2 font-medium underline">Dica: Execute o script SQL de correção no painel do Supabase.</p>
-              )}
+        {error && error.includes('infinite recursion') && (
+          <Card className="mb-8 border-amber-200 bg-amber-50 p-6 rounded-3xl shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-100 rounded-2xl text-amber-600">
+                <Terminal size={24} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-amber-900">Ação Necessária no Banco de Dados</h3>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  Detectamos um erro de <strong>recursão infinita</strong> nas políticas de segurança. 
+                  Isso acontece porque o banco de dados entra em loop ao tentar verificar suas permissões.
+                </p>
+                <div className="bg-white/50 p-4 rounded-xl border border-amber-200">
+                  <p className="text-xs font-semibold text-amber-900 mb-2 uppercase tracking-wider">Como resolver:</p>
+                  <ol className="text-xs text-amber-800 space-y-2 list-decimal ml-4">
+                    <li>Abra o <strong>SQL Editor</strong> no seu painel do Supabase.</li>
+                    <li>Copie o script SQL fornecido pelo assistente no chat.</li>
+                    <li>Cole e clique em <strong>Run</strong>.</li>
+                    <li>Após isso, clique no botão de atualizar abaixo.</li>
+                  </ol>
+                </div>
+                <Button 
+                  onClick={fetchData} 
+                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+                >
+                  <RefreshCw size={16} className="mr-2" /> Tentar Novamente
+                </Button>
+              </div>
             </div>
-          </div>
+          </Card>
         )}
 
         <Tabs defaultValue="users" className="w-full">
