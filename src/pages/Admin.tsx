@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -14,7 +14,9 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Lock
+  Lock,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,29 +30,54 @@ import { ptBR } from 'date-fns/locale';
 const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
 const Admin = () => {
-  const { role, loading } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (role !== 'admin_master') return;
+    
+    setIsFetching(true);
+    setError(null);
+    
+    try {
+      // Buscar perfis
+      const { data: profilesData, error: pError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('email');
+      
+      if (pError) throw pError;
+      setProfiles(profilesData || []);
+
+      // Buscar logs
+      const { data: logsData, error: lError } = await supabase
+        .from('logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (!lError) {
+        setLogs(logsData || []);
+      }
+    } catch (err: any) {
+      console.error("Erro ao buscar dados:", err);
+      setError(err.message);
+      showError("Não foi possível carregar os dados.");
+    } finally {
+      setIsFetching(false);
+    }
+  }, [role]);
 
   useEffect(() => {
     if (role === 'admin_master') {
       fetchData();
     }
-  }, [role]);
-
-  const fetchData = async () => {
-    const { data: profilesData } = await supabase.from('profiles').select('*');
-    const { data: logsData } = await supabase
-      .from('logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (profilesData) setProfiles(profilesData);
-    if (logsData) setLogs(logsData);
-  };
+  }, [role, fetchData]);
 
   const toggleRole = async (userId: string, currentRole: string, email: string) => {
     if (email === OWNER_EMAIL) {
@@ -91,7 +118,12 @@ const Admin = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Carregando...</div>;
+  if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <RefreshCw className="animate-spin text-slate-400" size={32} />
+    </div>
+  );
+  
   if (role !== 'admin_master') return <Navigate to="/" />;
 
   const filteredProfiles = profiles.filter(p => 
@@ -116,14 +148,30 @@ const Admin = () => {
               <h1 className="text-xl font-bold">Painel Admin Master</h1>
             </div>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={fetchData}
+            disabled={isFetching}
+            className="text-white hover:bg-white/10"
+          >
+            <RefreshCw size={20} className={isFetching ? "animate-spin" : ""} />
+          </Button>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700">
+            <AlertCircle size={20} />
+            <p className="text-sm">Erro ao carregar dados: {error}</p>
+          </div>
+        )}
+
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-200 p-1 rounded-xl">
             <TabsTrigger value="users" className="rounded-lg">
-              <Users size={18} className="mr-2" /> Usuários
+              <Users size={18} className="mr-2" /> Usuários ({profiles.length})
             </TabsTrigger>
             <TabsTrigger value="logs" className="rounded-lg">
               <History size={18} className="mr-2" /> Logs do Sistema
@@ -142,81 +190,93 @@ const Admin = () => {
             </div>
 
             <div className="grid gap-4">
-              {filteredProfiles.map(profile => {
-                const isOwner = profile.email === OWNER_EMAIL;
-                
-                return (
-                  <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
-                        {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">
-                          {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
-                        </p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant={profile.role === 'admin_master' ? 'default' : 'secondary'} className={profile.role === 'admin_master' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none' : ''}>
-                            {profile.role === 'admin_master' ? 'Admin Master' : 'Usuário'}
-                          </Badge>
-                          <Badge variant={profile.is_approved ? 'outline' : 'destructive'} className={profile.is_approved ? 'border-green-200 text-green-700 bg-green-50' : ''}>
-                            {profile.is_approved ? 'Aprovado' : 'Pendente'}
-                          </Badge>
+              {filteredProfiles.length > 0 ? (
+                filteredProfiles.map(profile => {
+                  const isOwner = profile.email === OWNER_EMAIL;
+                  
+                  return (
+                    <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
+                          {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">
+                            {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
+                          </p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant={profile.role === 'admin_master' ? 'default' : 'secondary'} className={profile.role === 'admin_master' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none' : ''}>
+                              {profile.role === 'admin_master' ? 'Admin Master' : 'Usuário'}
+                            </Badge>
+                            <Badge variant={profile.is_approved ? 'outline' : 'destructive'} className={profile.is_approved ? 'border-green-200 text-green-700 bg-green-50' : ''}>
+                              {profile.is_approved ? 'Aprovado' : 'Pendente'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        variant={profile.is_approved ? "outline" : "default"}
-                        size="sm"
-                        disabled={isOwner}
-                        onClick={() => toggleApproval(profile.id, profile.is_approved, profile.email)}
-                        className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
-                      >
-                        {profile.is_approved ? (
-                          <><XCircle size={16} className="mr-2" /> Revogar</>
-                        ) : (
-                          <><CheckCircle2 size={16} className="mr-2" /> Aprovar</>
-                        )}
-                      </Button>
                       
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        disabled={isOwner}
-                        onClick={() => toggleRole(profile.id, profile.role, profile.email)}
-                        className="text-slate-500"
-                      >
-                        Alterar Cargo
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
+                      <div className="flex gap-2">
+                        <Button 
+                          variant={profile.is_approved ? "outline" : "default"}
+                          size="sm"
+                          disabled={isOwner}
+                          onClick={() => toggleApproval(profile.id, profile.is_approved, profile.email)}
+                          className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
+                        >
+                          {profile.is_approved ? (
+                            <><XCircle size={16} className="mr-2" /> Revogar</>
+                          ) : (
+                            <><CheckCircle2 size={16} className="mr-2" /> Aprovar</>
+                          )}
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          disabled={isOwner}
+                          onClick={() => toggleRole(profile.id, profile.role, profile.email)}
+                          className="text-slate-500"
+                        >
+                          Alterar Cargo
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="logs">
             <div className="space-y-3">
-              {logs.map(log => (
-                <Card key={log.id} className="p-4 bg-white border-none shadow-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{log.action}</span>
-                        <span className="text-slate-400 text-xs">•</span>
-                        <span className="text-slate-500 text-sm">{log.user_email}</span>
+              {logs.length > 0 ? (
+                logs.map(log => (
+                  <Card key={log.id} className="p-4 bg-white border-none shadow-sm">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{log.action}</span>
+                          <span className="text-slate-400 text-xs">•</span>
+                          <span className="text-slate-500 text-sm">{log.user_email}</span>
+                        </div>
+                        <p className="text-sm text-slate-600">{log.details}</p>
                       </div>
-                      <p className="text-sm text-slate-600">{log.details}</p>
+                      <div className="flex items-center text-xs text-slate-400 gap-1">
+                        <Clock size={12} />
+                        {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                      </div>
                     </div>
-                    <div className="flex items-center text-xs text-slate-400 gap-1">
-                      <Clock size={12} />
-                      {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="text-muted-foreground">Nenhum log registrado.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
