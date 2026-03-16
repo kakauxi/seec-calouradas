@@ -8,69 +8,122 @@ import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, ShieldCheck, Settings } from 'lucide-react';
-import { showSuccess } from '@/utils/toast';
+import { Search, Gift, CreditCard, LogOut, ShieldCheck, Settings, RefreshCw } from 'lucide-react';
+import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
 import { Link } from 'react-router-dom';
 import { logAction } from '@/utils/logger';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { signOut, user, role } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // Permissões refinadas
   const canAddGuests = role === 'admin_master' || role === 'coordenador';
   const canDeleteGuests = role === 'admin_master';
 
-  useEffect(() => {
-    const savedGuests = localStorage.getItem('party-guests');
-    if (savedGuests) {
-      setGuests(JSON.parse(savedGuests));
+  const fetchGuests = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('guests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      showError('Erro ao carregar lista de convidados.');
+    } else if (data) {
+      setGuests(data.map(g => ({
+        id: g.id,
+        name: g.name,
+        phone: g.phone || '',
+        isPresent: g.is_present,
+        isCourtesy: g.is_courtesy,
+        createdAt: new Date(g.created_at).getTime()
+      })));
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchGuests();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('party-guests', JSON.stringify(guests));
-  }, [guests]);
-
-  const addGuest = (name: string, phone: string, isCourtesy: boolean) => {
+  const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
-    const newGuest: Guest = {
-      id: crypto.randomUUID(),
-      name,
-      phone,
-      isPresent: false,
-      isCourtesy,
-      createdAt: Date.now(),
-    };
-    setGuests(prev => [newGuest, ...prev]);
-    showSuccess(`${name} adicionado à lista!`);
-    logAction('Adicionar Convidado', `Adicionou ${name} (${isCourtesy ? 'Cortesia' : 'Pagante'})`);
-  };
+    
+    const { data, error } = await supabase
+      .from('guests')
+      .insert([{ 
+        name, 
+        phone, 
+        is_courtesy: isCourtesy,
+        is_present: false 
+      }])
+      .select()
+      .single();
 
-  const togglePresence = (id: string) => {
-    setGuests(prev => prev.map(guest => {
-      if (guest.id === id) {
-        const newStatus = !guest.isPresent;
-        if (newStatus) {
-          showSuccess(`${guest.name} chegou! 🎉`);
-          logAction('Check-in', `Confirmou presença de ${guest.name}`);
-        }
-        return { ...guest, isPresent: newStatus };
-      }
-      return guest;
-    }));
-  };
-
-  const deleteGuest = (id: string) => {
-    if (!canDeleteGuests) return;
-    const guest = guests.find(g => g.id === id);
-    if (guest) {
-      logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
+    if (error) {
+      showError('Erro ao salvar convidado no banco de dados.');
+    } else {
+      const newGuest: Guest = {
+        id: data.id,
+        name: data.name,
+        phone: data.phone || '',
+        isPresent: data.is_present,
+        isCourtesy: data.is_courtesy,
+        createdAt: new Date(data.created_at).getTime(),
+      };
+      setGuests(prev => [newGuest, ...prev]);
+      showSuccess(`${name} adicionado à lista!`);
+      logAction('Adicionar Convidado', `Adicionou ${name} (${isCourtesy ? 'Cortesia' : 'Pagante'})`);
     }
-    setGuests(prev => prev.filter(guest => guest.id !== id));
+  };
+
+  const togglePresence = async (id: string) => {
+    const guest = guests.find(g => g.id === id);
+    if (!guest) return;
+
+    const newStatus = !guest.isPresent;
+    
+    const { error } = await supabase
+      .from('guests')
+      .update({ is_present: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      showError('Erro ao atualizar presença.');
+    } else {
+      setGuests(prev => prev.map(g => g.id === id ? { ...g, isPresent: newStatus } : g));
+      if (newStatus) {
+        showSuccess(`${guest.name} chegou! 🎉`);
+        logAction('Check-in', `Confirmou presença de ${guest.name}`);
+      }
+    }
+  };
+
+  const deleteGuest = async (id: string) => {
+    if (!canDeleteGuests) return;
+    
+    const guest = guests.find(g => g.id === id);
+    
+    const { error } = await supabase
+      .from('guests')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      showError('Erro ao excluir convidado.');
+    } else {
+      if (guest) {
+        logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
+      }
+      setGuests(prev => prev.filter(g => g.id !== id));
+      showSuccess('Convidado removido.');
+    }
   };
 
   const filteredGuests = guests.filter(guest => 
@@ -102,6 +155,14 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={fetchGuests}
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
+            >
+              <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+            </Button>
             {role === 'admin_master' && (
               <Link to="/admin">
                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full">
@@ -136,52 +197,59 @@ const Index = () => {
           />
         </div>
 
-        <Tabs defaultValue="paying" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
-            <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <CreditCard size={16} className="mr-2" /> Pagantes ({payingGuests.length})
-            </TabsTrigger>
-            <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Gift size={16} className="mr-2" /> Cortesias ({courtesyGuests.length})
-            </TabsTrigger>
-          </TabsList>
+        {loading ? (
+          <div className="text-center py-12">
+            <RefreshCw className="animate-spin mx-auto text-slate-400 mb-2" />
+            <p className="text-slate-500">Carregando lista...</p>
+          </div>
+        ) : (
+          <Tabs defaultValue="paying" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
+              <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <CreditCard size={16} className="mr-2" /> Pagantes ({payingGuests.length})
+              </TabsTrigger>
+              <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Gift size={16} className="mr-2" /> Cortesias ({courtesyGuests.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="paying" className="space-y-1">
-            {payingGuests.length > 0 ? (
-              payingGuests.map(guest => (
-                <GuestCard
-                  key={guest.id}
-                  guest={guest}
-                  onTogglePresence={togglePresence}
-                  onDelete={deleteGuest}
-                  canDelete={canDeleteGuests}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                <p className="text-muted-foreground">Nenhum pagante na lista.</p>
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="paying" className="space-y-1">
+              {payingGuests.length > 0 ? (
+                payingGuests.map(guest => (
+                  <GuestCard
+                    key={guest.id}
+                    guest={guest}
+                    onTogglePresence={togglePresence}
+                    onDelete={deleteGuest}
+                    canDelete={canDeleteGuests}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="text-muted-foreground">Nenhum pagante na lista.</p>
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="courtesy" className="space-y-1">
-            {courtesyGuests.length > 0 ? (
-              courtesyGuests.map(guest => (
-                <GuestCard
-                  key={guest.id}
-                  guest={guest}
-                  onTogglePresence={togglePresence}
-                  onDelete={deleteGuest}
-                  canDelete={canDeleteGuests}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                <p className="text-muted-foreground">Nenhuma cortesia na lista.</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="courtesy" className="space-y-1">
+              {courtesyGuests.length > 0 ? (
+                courtesyGuests.map(guest => (
+                  <GuestCard
+                    key={guest.id}
+                    guest={guest}
+                    onTogglePresence={togglePresence}
+                    onDelete={deleteGuest}
+                    canDelete={canDeleteGuests}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="text-muted-foreground">Nenhuma cortesia na lista.</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
       
       <Footer />
