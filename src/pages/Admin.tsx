@@ -18,7 +18,8 @@ import {
   UserPlus,
   Terminal,
   ChevronDown,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -53,7 +54,7 @@ const Admin = () => {
     if (!silent) setIsFetching(true);
     
     try {
-      // Buscar perfis atualizados
+      // Buscar perfis atualizados - removendo qualquer cache
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -67,7 +68,7 @@ const Admin = () => {
         .from('logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (!lError) {
         setLogs(logsData || []);
@@ -84,35 +85,21 @@ const Admin = () => {
 
   useEffect(() => {
     if (role === 'admin_master') {
-      // Carga inicial
       fetchData();
 
-      // Configurar Realtime para detectar novos usuários e mudanças
       const channel = supabase
-        .channel('admin_changes')
+        .channel('admin_sync')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },
-          (payload) => {
-            console.log('Mudança detectada em profiles:', payload);
-            fetchData(true); // Atualiza a lista silenciosamente
-            
-            // Se for um novo usuário, mostra um aviso discreto
-            if (payload.eventType === 'INSERT') {
-              showSuccess('Novo usuário cadastrado!');
-            }
-          }
+          () => fetchData(true)
         )
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'logs' },
           () => fetchData(true)
         )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('Inscrito com sucesso para atualizações em tempo real');
-          }
-        });
+        .subscribe();
 
       return () => {
         supabase.removeChannel(channel);
@@ -136,7 +123,7 @@ const Admin = () => {
       showError('Erro ao atualizar permissão.');
     } else {
       showSuccess(`Cargo de ${email} atualizado!`);
-      // O Realtime cuidará da atualização da UI
+      fetchData(true);
     }
     setProcessingId(null);
   };
@@ -157,7 +144,7 @@ const Admin = () => {
       showError('Erro ao atualizar status de aprovação.');
     } else {
       showSuccess(currentStatus ? `Acesso de ${email} revogado.` : `Usuário ${email} aprovado!`);
-      // O Realtime cuidará da atualização da UI
+      fetchData(true);
     }
     setProcessingId(null);
   };
@@ -228,19 +215,19 @@ const Admin = () => {
 
       <main className="max-w-4xl mx-auto px-4">
         {error && (
-          <Card className="mb-8 border-amber-200 bg-amber-50 p-6 rounded-3xl shadow-sm">
+          <Card className="mb-8 border-red-200 bg-red-50 p-6 rounded-3xl shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-amber-100 rounded-2xl text-amber-600">
-                <Terminal size={24} />
+              <div className="p-3 bg-red-100 rounded-2xl text-red-600">
+                <AlertCircle size={24} />
               </div>
               <div className="space-y-3">
-                <h3 className="text-lg font-bold text-amber-900">Ação Necessária</h3>
-                <p className="text-sm text-amber-800 leading-relaxed">
-                  Ocorreu um erro ao carregar os usuários: <strong>{error}</strong>. 
+                <h3 className="text-lg font-bold text-red-900">Erro de Conexão</h3>
+                <p className="text-sm text-red-800 leading-relaxed">
+                  Não foi possível carregar a lista completa: <strong>{error}</strong>.
                 </p>
                 <Button 
                   onClick={() => fetchData()} 
-                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+                  className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
                 >
                   <RefreshCw size={16} className="mr-2" /> Tentar Novamente
                 </Button>
