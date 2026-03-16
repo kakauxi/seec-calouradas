@@ -7,12 +7,15 @@ import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
-import { Search, Gift, CreditCard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, Gift, CreditCard, LogOut } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import logo from '@/assets/logo.png';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from '@/components/AuthProvider';
 
 const Index = () => {
+  const { signOut, user } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -71,16 +74,26 @@ const Index = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <img 
-            src={logo} 
-            alt="SEEC Logo" 
-            className="w-20 h-20 object-contain"
-          />
-          <div>
-            <h1 className="text-2xl font-bold">SEEC Check-in</h1>
-            <p className="text-slate-400 text-sm">Gerenciamento de calouradas da SEEC</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img 
+              src={logo} 
+              alt="SEEC Logo" 
+              className="w-16 h-16 object-contain"
+            />
+            <div>
+              <h1 className="text-xl font-bold">SEEC Check-in</h1>
+              <p className="text-slate-400 text-xs">{user?.email}</p>
+            </div>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={signOut}
+            className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
+          >
+            <LogOut size={20} />
+          </Button>
         </div>
       </header>
 
