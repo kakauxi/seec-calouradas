@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { 
-  ShieldCheck, 
   Users, 
   History, 
   ArrowLeft, 
@@ -16,10 +15,8 @@ import {
   XCircle,
   Lock,
   RefreshCw,
-  AlertCircle,
   UserPlus,
   Terminal,
-  UserCheck,
   ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -186,7 +183,13 @@ const Admin = () => {
               <ArrowLeft size={20} />
             </Button>
             <div className="flex items-center gap-3">
-              <ShieldCheck className="text-amber-400" size={28} />
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/src/assets/logo.png" 
+                  alt="SEEC Logo" 
+                  className="w-full h-full object-contain p-0.5"
+                />
+              </div>
               <h1 className="text-xl font-bold">Painel Admin Master</h1>
             </div>
           </div>

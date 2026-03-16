@@ -8,7 +8,7 @@ import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, ShieldCheck, Settings, RefreshCw } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
@@ -151,8 +151,12 @@ const Index = () => {
       <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-              <ShieldCheck className="text-white" size={28} />
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+              <img 
+                src="/src/assets/logo.png" 
+                alt="SEEC Logo" 
+                className="w-full h-full object-contain p-1"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold">SEEC Check-in</h1>

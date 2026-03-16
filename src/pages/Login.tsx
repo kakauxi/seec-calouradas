@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
-import { ShieldCheck, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,8 +89,12 @@ const Login = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 bg-black rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-            <ShieldCheck className="text-white" size={40} />
+          <div className="w-24 h-24 mb-4">
+            <img 
+              src="/src/assets/logo.png" 
+              alt="SEEC Logo" 
+              className="w-full h-full object-contain drop-shadow-md"
+            />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">SEEC Check-in</h1>
           <p className="text-slate-500 text-sm">Gerencie sua lista de convidados</p>

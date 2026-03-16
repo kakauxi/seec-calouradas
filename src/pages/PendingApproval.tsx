@@ -11,8 +11,12 @@ const PendingApproval = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
       <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-          <Clock className="text-amber-600" size={40} />
+        <div className="w-24 h-24 mb-6 mx-auto">
+          <img 
+            src="/src/assets/logo.png" 
+            alt="SEEC Logo" 
+            className="w-full h-full object-contain drop-shadow-sm"
+          />
         </div>
         
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso Pendente</h1>
