@@ -79,7 +79,7 @@ const Index = () => {
           />
           <div>
             <h1 className="text-2xl font-bold">SEEC Check-in</h1>
-            <p className="text-slate-400 text-sm">Gerencie seus convidados com facilidade</p>
+            <p className="text-slate-400 text-sm">Gerenciamento de calouradas da SEEC</p>
           </div>
         </div>
       </header>
