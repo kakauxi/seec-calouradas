@@ -91,7 +91,7 @@ const Login = () => {
         <div className="flex flex-col items-center mb-8">
           <div className="w-24 h-24 mb-4">
             <img 
-              src="/src/assets/logo.png" 
+              src="/logo.png" 
               alt="SEEC Logo" 
               className="w-full h-full object-contain drop-shadow-md"
             />

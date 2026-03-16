@@ -153,7 +153,7 @@ const Index = () => {
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden">
               <img 
-                src="/src/assets/logo.png" 
+                src="/logo.png" 
                 alt="SEEC Logo" 
                 className="w-full h-full object-contain p-1"
               />

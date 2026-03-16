@@ -13,7 +13,7 @@ const PendingApproval = () => {
       <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
         <div className="w-24 h-24 mb-6 mx-auto">
           <img 
-            src="/src/assets/logo.png" 
+            src="/logo.png" 
             alt="SEEC Logo" 
             className="w-full h-full object-contain drop-shadow-sm"
           />
