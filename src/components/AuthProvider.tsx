@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -22,7 +24,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, userEmail?: string) => {
+    // Se for o dono, já define como admin master preventivamente
+    if (userEmail === OWNER_EMAIL) {
+      setRole('admin_master');
+      setIsApproved(true);
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('role, is_approved')
@@ -32,6 +40,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!error && data) {
       setRole(data.role);
       setIsApproved(data.is_approved);
+    } else if (userEmail === OWNER_EMAIL) {
+      // Fallback caso o perfil ainda não tenha sido criado pelo trigger
+      setRole('admin_master');
+      setIsApproved(true);
     }
   };
 
@@ -43,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchProfile(session.user.id);
+          fetchProfile(session.user.id, session.user.email);
         }
         setLoading(false);
       }
@@ -54,7 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchProfile(session.user.id);
+          fetchProfile(session.user.id, session.user.email);
         } else {
           setRole(null);
           setIsApproved(false);
