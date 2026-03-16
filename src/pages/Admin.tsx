@@ -18,7 +18,8 @@ import {
   RefreshCw,
   AlertCircle,
   UserPlus,
-  Terminal
+  Terminal,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -174,14 +175,14 @@ const Admin = () => {
               <div className="space-y-3">
                 <h3 className="text-lg font-bold text-amber-900">Ação Necessária no Banco de Dados</h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
-                  Detectamos um erro de <strong>recursão infinita</strong> nas políticas de segurança. 
-                  Isso acontece porque o banco de dados entra em loop ao tentar verificar suas permissões.
+                  Detectamos um erro de <strong>recursão infinita</strong> ou usuários faltando. 
+                  Isso acontece quando as políticas de segurança entram em loop ou perfis não foram criados.
                 </p>
                 <div className="bg-white/50 p-4 rounded-xl border border-amber-200">
                   <p className="text-xs font-semibold text-amber-900 mb-2 uppercase tracking-wider">Como resolver:</p>
                   <ol className="text-xs text-amber-800 space-y-2 list-decimal ml-4">
                     <li>Abra o <strong>SQL Editor</strong> no seu painel do Supabase.</li>
-                    <li>Copie o script SQL fornecido pelo assistente no chat.</li>
+                    <li>Copie o <strong>Script de Sincronização</strong> enviado no chat.</li>
                     <li>Cole e clique em <strong>Run</strong>.</li>
                     <li>Após isso, clique no botão de atualizar abaixo.</li>
                   </ol>
@@ -279,7 +280,7 @@ const Admin = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
                   <p className="text-slate-500 max-w-xs mx-auto mt-2">
-                    Se você acabou de criar uma conta, tente atualizar a lista ou verifique o SQL Editor.
+                    Se você sabe que existem usuários cadastrados, rode o <strong>Script de Sincronização</strong> no SQL Editor do Supabase.
                   </p>
                   <Button variant="outline" onClick={fetchData} className="mt-6 rounded-xl">
                     <RefreshCw size={16} className="mr-2" /> Atualizar Agora
