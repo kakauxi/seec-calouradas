@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Guest } from '@/types/guest';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Circle, Trash2, Phone, Gift } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, Phone, Gift, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -27,6 +27,18 @@ interface GuestCardProps {
 }
 
 const GuestCard = ({ guest, onTogglePresence, onDelete, canDelete = true }: GuestCardProps) => {
+  const [showPresenceConfirm, setShowPresenceConfirm] = useState(false);
+
+  const handlePresenceClick = () => {
+    if (guest.isPresent) {
+      // Se já está presente, pede confirmação para remover
+      setShowPresenceConfirm(true);
+    } else {
+      // Se não está presente, confirma direto para agilizar
+      onTogglePresence(guest.id);
+    }
+  };
+
   return (
     <Card className={cn(
       "p-4 mb-3 transition-all duration-300 border-l-4",
@@ -85,21 +97,47 @@ const GuestCard = ({ guest, onTogglePresence, onDelete, canDelete = true }: Gues
             </AlertDialog>
           )}
           
-          <Button
-            variant={guest.isPresent ? "default" : "outline"}
-            size="sm"
-            onClick={() => onTogglePresence(guest.id)}
-            className={cn(
-              "rounded-full px-4",
-              guest.isPresent ? "bg-green-600 hover:bg-green-700" : "border-slate-200 text-slate-900 hover:bg-slate-50"
-            )}
-          >
-            {guest.isPresent ? (
-              <><CheckCircle2 size={16} className="mr-2" /> Presente</>
-            ) : (
-              <><Circle size={16} className="mr-2" /> Confirmar</>
-            )}
-          </Button>
+          <AlertDialog open={showPresenceConfirm} onOpenChange={setShowPresenceConfirm}>
+            <Button
+              variant={guest.isPresent ? "default" : "outline"}
+              size="sm"
+              onClick={handlePresenceClick}
+              className={cn(
+                "rounded-full px-4",
+                guest.isPresent ? "bg-green-600 hover:bg-green-700" : "border-slate-200 text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              {guest.isPresent ? (
+                <><CheckCircle2 size={16} className="mr-2" /> Presente</>
+              ) : (
+                <><Circle size={16} className="mr-2" /> Confirmar</>
+              )}
+            </Button>
+            <AlertDialogContent className="rounded-2xl">
+              <AlertDialogHeader>
+                <div className="flex items-center gap-2 text-amber-600 mb-2">
+                  <AlertTriangle size={20} />
+                  <AlertDialogTitle>Remover presença?</AlertDialogTitle>
+                </div>
+                <AlertDialogDescription>
+                  Você está prestes a remover a confirmação de presença de <strong>{guest.name}</strong>. 
+                  Deseja continuar?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    onTogglePresence(guest.id);
+                    setShowPresenceConfirm(false);
+                  }}
+                  className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl"
+                >
+                  Sim, remover presença
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </Card>
