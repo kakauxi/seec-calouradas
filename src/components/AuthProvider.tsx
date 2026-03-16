@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: string | null;
+  isApproved: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -18,17 +19,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_approved')
       .eq('id', userId)
       .single();
     
     if (!error && data) {
       setRole(data.role);
+      setIsApproved(data.is_approved);
     }
   };
 
@@ -54,6 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           fetchProfile(session.user.id);
         } else {
           setRole(null);
+          setIsApproved(false);
         }
         setLoading(false);
       }
@@ -70,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, role, isApproved, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

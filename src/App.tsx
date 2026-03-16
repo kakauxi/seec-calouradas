@@ -8,12 +8,13 @@ import { AuthProvider, useAuth } from "./components/AuthProvider";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
+import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+  const { session, loading, isApproved, role } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -21,6 +22,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!session) {
     return <Navigate to="/login" />;
+  }
+
+  // Se não estiver aprovado e não for o admin master, redireciona para página de pendência
+  if (!isApproved && role !== 'admin_master') {
+    return <PendingApproval />;
   }
 
   return <>{children}</>;
