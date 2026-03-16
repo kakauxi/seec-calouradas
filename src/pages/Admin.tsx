@@ -13,7 +13,8 @@ import {
   Search,
   Clock,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
 const Admin = () => {
   const { role, loading } = useAuth();
@@ -48,7 +51,12 @@ const Admin = () => {
     if (logsData) setLogs(logsData);
   };
 
-  const toggleRole = async (userId: string, currentRole: string) => {
+  const toggleRole = async (userId: string, currentRole: string, email: string) => {
+    if (email === OWNER_EMAIL) {
+      showError('Não é possível alterar o cargo do proprietário.');
+      return;
+    }
+
     const newRole = currentRole === 'admin_master' ? 'user' : 'admin_master';
     const { error } = await supabase
       .from('profiles')
@@ -63,7 +71,12 @@ const Admin = () => {
     }
   };
 
-  const toggleApproval = async (userId: string, currentStatus: boolean) => {
+  const toggleApproval = async (userId: string, currentStatus: boolean, email: string) => {
+    if (email === OWNER_EMAIL) {
+      showError('Não é possível revogar o acesso do proprietário.');
+      return;
+    }
+
     const { error } = await supabase
       .from('profiles')
       .update({ is_approved: !currentStatus })
@@ -123,50 +136,58 @@ const Admin = () => {
             </div>
 
             <div className="grid gap-4">
-              {filteredProfiles.map(profile => (
-                <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
-                      <UserCog size={20} className="text-slate-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">{profile.email}</p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant={profile.role === 'admin_master' ? 'default' : 'secondary'} className={profile.role === 'admin_master' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none' : ''}>
-                          {profile.role === 'admin_master' ? 'Admin Master' : 'Usuário'}
-                        </Badge>
-                        <Badge variant={profile.is_approved ? 'outline' : 'destructive'} className={profile.is_approved ? 'border-green-200 text-green-700 bg-green-50' : ''}>
-                          {profile.is_approved ? 'Aprovado' : 'Pendente'}
-                        </Badge>
+              {filteredProfiles.map(profile => {
+                const isOwner = profile.email === OWNER_EMAIL;
+                
+                return (
+                  <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
+                        {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">
+                          {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
+                        </p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant={profile.role === 'admin_master' ? 'default' : 'secondary'} className={profile.role === 'admin_master' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-none' : ''}>
+                            {profile.role === 'admin_master' ? 'Admin Master' : 'Usuário'}
+                          </Badge>
+                          <Badge variant={profile.is_approved ? 'outline' : 'destructive'} className={profile.is_approved ? 'border-green-200 text-green-700 bg-green-50' : ''}>
+                            {profile.is_approved ? 'Aprovado' : 'Pendente'}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant={profile.is_approved ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => toggleApproval(profile.id, profile.is_approved)}
-                      className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
-                    >
-                      {profile.is_approved ? (
-                        <><XCircle size={16} className="mr-2" /> Revogar</>
-                      ) : (
-                        <><CheckCircle2 size={16} className="mr-2" /> Aprovar</>
-                      )}
-                    </Button>
                     
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => toggleRole(profile.id, profile.role)}
-                      className="text-slate-500"
-                    >
-                      Alterar Cargo
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                    <div className="flex gap-2">
+                      <Button 
+                        variant={profile.is_approved ? "outline" : "default"}
+                        size="sm"
+                        disabled={isOwner}
+                        onClick={() => toggleApproval(profile.id, profile.is_approved, profile.email)}
+                        className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
+                      >
+                        {profile.is_approved ? (
+                          <><XCircle size={16} className="mr-2" /> Revogar</>
+                        ) : (
+                          <><CheckCircle2 size={16} className="mr-2" /> Aprovar</>
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        disabled={isOwner}
+                        onClick={() => toggleRole(profile.id, profile.role, profile.email)}
+                        className="text-slate-500"
+                      >
+                        Alterar Cargo
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
