@@ -6,9 +6,10 @@ import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import { Input } from '@/components/ui/input';
-import { Search, PartyPopper } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import logo from '@/assets/logo.png';
 
 const Index = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -64,16 +65,16 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <header className="bg-black text-white py-8 px-4 shadow-lg mb-8">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-2 rounded-lg">
-              <PartyPopper size={32} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">SEEC Check-in</h1>
-              <p className="text-slate-400 text-sm">Gerencie seus convidados com facilidade</p>
-            </div>
+      <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
+        <div className="max-w-2xl mx-auto flex items-center gap-4">
+          <img 
+            src={logo} 
+            alt="SEEC Logo" 
+            className="w-20 h-20 object-contain"
+          />
+          <div>
+            <h1 className="text-2xl font-bold">SEEC Check-in</h1>
+            <p className="text-slate-400 text-sm">Gerencie seus convidados com facilidade</p>
           </div>
         </div>
       </header>
