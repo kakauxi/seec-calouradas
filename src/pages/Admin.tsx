@@ -51,10 +51,9 @@ const Admin = () => {
     if (role !== 'admin_master') return;
     
     if (!silent) setIsFetching(true);
-    setError(null);
     
     try {
-      // Buscar perfis
+      // Buscar perfis atualizados
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -63,7 +62,7 @@ const Admin = () => {
       if (pError) throw pError;
       setProfiles(profilesData || []);
 
-      // Buscar logs
+      // Buscar logs recentes
       const { data: logsData, error: lError } = await supabase
         .from('logs')
         .select('*')
@@ -73,6 +72,7 @@ const Admin = () => {
       if (!lError) {
         setLogs(logsData || []);
       }
+      setError(null);
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
@@ -84,25 +84,38 @@ const Admin = () => {
 
   useEffect(() => {
     if (role === 'admin_master') {
+      // Carga inicial
       fetchData();
 
-      // Configurar Realtime para perfis e logs
-      const profilesChannel = supabase
-        .channel('admin-realtime')
+      // Configurar Realtime para detectar novos usuários e mudanças
+      const channel = supabase
+        .channel('admin_changes')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },
-          () => fetchData(true)
+          (payload) => {
+            console.log('Mudança detectada em profiles:', payload);
+            fetchData(true); // Atualiza a lista silenciosamente
+            
+            // Se for um novo usuário, mostra um aviso discreto
+            if (payload.eventType === 'INSERT') {
+              showSuccess('Novo usuário cadastrado!');
+            }
+          }
         )
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'logs' },
+          { event: 'INSERT', schema: 'public', table: 'logs' },
           () => fetchData(true)
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Inscrito com sucesso para atualizações em tempo real');
+          }
+        });
 
       return () => {
-        supabase.removeChannel(profilesChannel);
+        supabase.removeChannel(channel);
       };
     }
   }, [role, fetchData]);
@@ -120,11 +133,10 @@ const Admin = () => {
       .eq('id', userId);
 
     if (error) {
-      console.error("Erro ao atualizar cargo:", error);
       showError('Erro ao atualizar permissão.');
     } else {
-      showSuccess(`Cargo atualizado!`);
-      await fetchData(true);
+      showSuccess(`Cargo de ${email} atualizado!`);
+      // O Realtime cuidará da atualização da UI
     }
     setProcessingId(null);
   };
@@ -142,11 +154,10 @@ const Admin = () => {
       .eq('id', userId);
 
     if (error) {
-      console.error("Erro ao atualizar aprovação:", error);
       showError('Erro ao atualizar status de aprovação.');
     } else {
-      showSuccess(currentStatus ? 'Acesso revogado.' : 'Usuário aprovado!');
-      await fetchData(true);
+      showSuccess(currentStatus ? `Acesso de ${email} revogado.` : `Usuário ${email} aprovado!`);
+      // O Realtime cuidará da atualização da UI
     }
     setProcessingId(null);
   };
