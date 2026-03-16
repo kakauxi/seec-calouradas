@@ -6,7 +6,7 @@ import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import { Input } from '@/components/ui/input';
-import { Search, Users, Gift } from 'lucide-react';
+import { Search, Users, Gift, CreditCard } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import logo from '@/assets/logo.png';
@@ -39,7 +39,7 @@ const Index = () => {
       createdAt: Date.now(),
     };
     setGuests(prev => [newGuest, ...prev]);
-    showSuccess(`${name} adicionado à lista!`);
+    showSuccess(`${name} adicionado à lista de ${isCourtesy ? 'Cortesias' : 'Pagantes'}!`);
   };
 
   const togglePresence = (id: string) => {
@@ -62,7 +62,7 @@ const Index = () => {
     guest.phone.includes(searchTerm)
   );
 
-  const normalGuests = filteredGuests.filter(g => !g.isCourtesy);
+  const payingGuests = filteredGuests.filter(g => !g.isCourtesy);
   const courtesyGuests = filteredGuests.filter(g => g.isCourtesy);
 
   const presentCount = guests.filter(g => g.isPresent).length;
@@ -92,26 +92,26 @@ const Index = () => {
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <Input
-            placeholder="Buscar convidado por nome ou telefone..."
+            placeholder="Buscar por nome ou telefone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 py-6 bg-white border-none shadow-sm rounded-xl"
           />
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="paying" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
-            <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Users size={16} className="mr-2" /> Geral ({normalGuests.length})
+            <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <CreditCard size={16} className="mr-2" /> Pagantes ({payingGuests.length})
             </TabsTrigger>
             <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <Gift size={16} className="mr-2" /> Cortesias ({courtesyGuests.length})
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all" className="space-y-1">
-            {normalGuests.length > 0 ? (
-              normalGuests.map(guest => (
+          <TabsContent value="paying" className="space-y-1">
+            {payingGuests.length > 0 ? (
+              payingGuests.map(guest => (
                 <GuestCard
                   key={guest.id}
                   guest={guest}
@@ -121,7 +121,7 @@ const Index = () => {
               ))
             ) : (
               <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                <p className="text-muted-foreground">Nenhum convidado normal na lista.</p>
+                <p className="text-muted-foreground">Nenhum pagante na lista.</p>
               </div>
             )}
           </TabsContent>
