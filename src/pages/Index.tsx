@@ -8,17 +8,18 @@ import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, ShieldCheck } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, ShieldCheck, Settings } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
+import { Link } from 'react-router-dom';
+import { logAction } from '@/utils/logger';
 
 const Index = () => {
-  const { signOut, user } = useAuth();
+  const { signOut, user, role } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Carregar dados do localStorage ao iniciar
   useEffect(() => {
     const savedGuests = localStorage.getItem('party-guests');
     if (savedGuests) {
@@ -26,7 +27,6 @@ const Index = () => {
     }
   }, []);
 
-  // Salvar dados no localStorage sempre que a lista mudar
   useEffect(() => {
     localStorage.setItem('party-guests', JSON.stringify(guests));
   }, [guests]);
@@ -41,14 +41,18 @@ const Index = () => {
       createdAt: Date.now(),
     };
     setGuests(prev => [newGuest, ...prev]);
-    showSuccess(`${name} adicionado à lista de ${isCourtesy ? 'Cortesias' : 'Pagantes'}!`);
+    showSuccess(`${name} adicionado à lista!`);
+    logAction('Adicionar Convidado', `Adicionou ${name} (${isCourtesy ? 'Cortesia' : 'Pagante'})`);
   };
 
   const togglePresence = (id: string) => {
     setGuests(prev => prev.map(guest => {
       if (guest.id === id) {
         const newStatus = !guest.isPresent;
-        if (newStatus) showSuccess(`${guest.name} chegou! 🎉`);
+        if (newStatus) {
+          showSuccess(`${guest.name} chegou! 🎉`);
+          logAction('Check-in', `Confirmou presença de ${guest.name}`);
+        }
         return { ...guest, isPresent: newStatus };
       }
       return guest;
@@ -56,6 +60,10 @@ const Index = () => {
   };
 
   const deleteGuest = (id: string) => {
+    const guest = guests.find(g => g.id === id);
+    if (guest) {
+      logAction('Excluir Convidado', `Removeu ${guest.name} da lista`);
+    }
     setGuests(prev => prev.filter(guest => guest.id !== id));
   };
 
@@ -71,7 +79,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
       <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -80,17 +87,31 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold">SEEC Check-in</h1>
-              <p className="text-slate-400 text-xs">{user?.email}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-400 text-xs">{user?.email}</p>
+                {role === 'admin_master' && (
+                  <span className="bg-amber-500/20 text-amber-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Admin</span>
+                )}
+              </div>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={signOut}
-            className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
-          >
-            <LogOut size={20} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {role === 'admin_master' && (
+              <Link to="/admin">
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full">
+                  <Settings size={20} />
+                </Button>
+              </Link>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={signOut}
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
+            >
+              <LogOut size={20} />
+            </Button>
+          </div>
         </div>
       </header>
 
