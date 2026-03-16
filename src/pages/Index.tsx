@@ -159,7 +159,7 @@ const Index = () => {
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold">SEEC Check-in</h1>
+              <h1 className="text-xl font-bold">No Sigilo (SEEC/SPOTTED) Check-in</h1>
               <div className="flex items-center gap-2">
                 <p className="text-slate-400 text-xs">{user?.email}</p>
                 <span className="bg-white/10 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">

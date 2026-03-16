@@ -96,8 +96,8 @@ const Login = () => {
               className="w-full h-full object-contain drop-shadow-md"
             />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">SEEC Check-in</h1>
-          <p className="text-slate-500 text-sm">Gerencie sua lista de convidados</p>
+          <h1 className="text-2xl font-bold text-slate-900 text-center">No Sigilo (SEEC/SPOTTED) Check-in</h1>
+          <p className="text-slate-500 text-sm mt-1">Gerencie sua lista de convidados</p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
