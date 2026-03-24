@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Guest } from '@/types/guest';
 import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
@@ -8,7 +8,7 @@ import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronDown } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
@@ -16,24 +16,22 @@ import { Link } from 'react-router-dom';
 import { logAction } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 const Index = () => {
   const { signOut, user, role } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [presentCount, setPresentCount] = useState(0);
+  const [filteredTotal, setFilteredTotal] = useState(0);
 
   // Permissões refinadas
   const canAddGuests = role === 'admin_master' || role === 'coordenador';
   const canDeleteGuests = role === 'admin_master';
 
-  // Busca estatísticas globais (total e presentes) separadamente da lista paginada
   const fetchStats = useCallback(async () => {
     const { count, error } = await supabase
       .from('guests')
@@ -49,13 +47,12 @@ const Index = () => {
     if (!pError && present !== null) setPresentCount(present);
   }, []);
 
-  const fetchGuests = useCallback(async (pageNum: number, search: string, isInitial = false) => {
-    if (isInitial) setLoading(true);
-    else setLoadingMore(true);
+  const fetchGuests = useCallback(async (pageNum: number, search: string) => {
+    setLoading(true);
 
     let query = supabase
       .from('guests')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('name', { ascending: true })
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -63,7 +60,7 @@ const Index = () => {
       query = query.ilike('name', `%${search}%`);
     }
 
-    const { data, error } = await query;
+    const { data, count, error } = await query;
 
     if (error) {
       showError('Erro ao carregar lista de convidados.');
@@ -77,32 +74,29 @@ const Index = () => {
         createdAt: new Date(g.created_at).getTime()
       }));
 
-      if (pageNum === 0) {
-        setGuests(formatted);
-      } else {
-        setGuests(prev => [...prev, ...formatted]);
-      }
-      
-      setHasMore(data.length === PAGE_SIZE);
+      setGuests(formatted);
+      setFilteredTotal(count || 0);
     }
     
     setLoading(false);
-    setLoadingMore(false);
   }, []);
 
-  // Efeito inicial e para busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setPage(0);
-      fetchGuests(0, searchTerm, true);
+      fetchGuests(0, searchTerm);
       fetchStats();
-    }, 300); // Debounce para busca
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchTerm, fetchGuests, fetchStats]);
 
+  // Efeito para quando a página muda
   useEffect(() => {
-    // Configurar Realtime para atualizar estatísticas e lista quando houver mudanças
+    fetchGuests(page, searchTerm);
+  }, [page, fetchGuests, searchTerm]);
+
+  useEffect(() => {
     const channel = supabase
       .channel('guests-realtime-index')
       .on(
@@ -110,8 +104,7 @@ const Index = () => {
         { event: '*', schema: 'public', table: 'guests' },
         () => {
           fetchStats();
-          // Não resetamos a lista automaticamente para não atrapalhar o scroll do usuário,
-          // mas as estatísticas no topo estarão sempre certas.
+          fetchGuests(page, searchTerm);
         }
       )
       .subscribe();
@@ -119,18 +112,11 @@ const Index = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchStats]);
-
-  const loadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchGuests(nextPage, searchTerm);
-  };
+  }, [fetchStats, fetchGuests, page, searchTerm]);
 
   const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
 
-    // Validação de duplicidade no banco (mais seguro que apenas local)
     const { data: existing } = await supabase
       .from('guests')
       .select('id')
@@ -156,9 +142,8 @@ const Index = () => {
     } else {
       showSuccess(`${name} adicionado!`);
       logAction('Adicionar Convidado', `Adicionou ${name}`);
-      // Recarrega a primeira página para mostrar o novo item se ele estiver no range
       setPage(0);
-      fetchGuests(0, searchTerm, false);
+      fetchGuests(0, searchTerm);
       fetchStats();
     }
   };
@@ -177,9 +162,8 @@ const Index = () => {
     if (error) {
       showError('Erro ao atualizar presença.');
     } else {
-      // Atualiza localmente para feedback imediato
-      setGuests(prev => prev.map(g => g.id === id ? { ...g, isPresent: newStatus } : g));
       fetchStats();
+      fetchGuests(page, searchTerm);
       
       if (newStatus) {
         showSuccess(`${guest.name} chegou! 🎉`);
@@ -203,8 +187,8 @@ const Index = () => {
     if (error) {
       showError('Erro ao excluir convidado.');
     } else {
-      setGuests(prev => prev.filter(g => g.id !== id));
       fetchStats();
+      fetchGuests(page, searchTerm);
       if (guest) {
         logAction('Excluir Convidado', `Removeu ${guest.name}`);
       }
@@ -212,6 +196,7 @@ const Index = () => {
     }
   };
 
+  const totalPages = Math.ceil(filteredTotal / PAGE_SIZE);
   const payingGuests = guests.filter(g => !g.isCourtesy);
   const courtesyGuests = guests.filter(g => g.isCourtesy);
 
@@ -241,7 +226,7 @@ const Index = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => { setPage(0); fetchGuests(0, searchTerm, true); fetchStats(); }}
+              onClick={() => { setPage(0); fetchGuests(0, searchTerm); fetchStats(); }}
               className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
@@ -309,7 +294,7 @@ const Index = () => {
                 ))
               ) : (
                 <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhum pagante encontrado.</p>
+                  <p className="text-muted-foreground">Nenhum pagante nesta página.</p>
                 </div>
               )}
             </TabsContent>
@@ -327,26 +312,59 @@ const Index = () => {
                 ))
               ) : (
                 <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhuma cortesia encontrada.</p>
+                  <p className="text-muted-foreground">Nenhuma cortesia nesta página.</p>
                 </div>
               )}
             </TabsContent>
 
-            {hasMore && (
-              <div className="mt-8 flex justify-center">
-                <Button 
-                  onClick={loadMore} 
-                  disabled={loadingMore}
-                  variant="outline"
-                  className="rounded-xl px-8 py-6 border-slate-200 text-slate-600 hover:bg-white"
-                >
-                  {loadingMore ? (
-                    <RefreshCw size={18} className="animate-spin mr-2" />
-                  ) : (
-                    <ChevronDown size={18} className="mr-2" />
-                  )}
-                  Carregar Mais Convidados
-                </Button>
+            {totalPages > 1 && (
+              <div className="mt-8 flex flex-col items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                    disabled={page === 0}
+                    className="rounded-xl border-slate-200"
+                  >
+                    <ChevronLeft size={18} />
+                  </Button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      // Lógica simples para mostrar páginas próximas à atual
+                      let pageNum = i;
+                      if (totalPages > 5 && page > 2) {
+                        pageNum = Math.min(page - 2 + i, totalPages - 1);
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={page === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPage(pageNum)}
+                          className={`w-10 h-10 rounded-xl ${page === pageNum ? "bg-black text-white" : "border-slate-200 text-slate-600"}`}
+                        >
+                          {pageNum + 1}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
+                    disabled={page === totalPages - 1}
+                    className="rounded-xl border-slate-200"
+                  >
+                    <ChevronRight size={18} />
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Página {page + 1} de {totalPages} ({filteredTotal} resultados)
+                </p>
               </div>
             )}
           </Tabs>
