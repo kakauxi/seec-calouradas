@@ -22,13 +22,13 @@ const Index = () => {
   const { signOut, user, role } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('paying');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [presentCount, setPresentCount] = useState(0);
   const [filteredTotal, setFilteredTotal] = useState(0);
 
-  // Permissões refinadas
   const canAddGuests = role === 'admin_master' || role === 'coordenador';
   const canDeleteGuests = role === 'admin_master';
 
@@ -47,12 +47,13 @@ const Index = () => {
     if (!pError && present !== null) setPresentCount(present);
   }, []);
 
-  const fetchGuests = useCallback(async (pageNum: number, search: string) => {
+  const fetchGuests = useCallback(async (pageNum: number, search: string, tab: string) => {
     setLoading(true);
 
     let query = supabase
       .from('guests')
       .select('*', { count: 'exact' })
+      .eq('is_courtesy', tab === 'courtesy') // Filtra por tipo na consulta
       .order('name', { ascending: true })
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -81,20 +82,20 @@ const Index = () => {
     setLoading(false);
   }, []);
 
+  // Resetar página ao trocar de aba ou buscar
+  useEffect(() => {
+    setPage(0);
+  }, [activeTab, searchTerm]);
+
+  // Buscar dados quando página, aba ou busca mudar
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPage(0);
-      fetchGuests(0, searchTerm);
+      fetchGuests(page, searchTerm, activeTab);
       fetchStats();
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, fetchGuests, fetchStats]);
-
-  // Efeito para quando a página muda
-  useEffect(() => {
-    fetchGuests(page, searchTerm);
-  }, [page, fetchGuests, searchTerm]);
+  }, [page, searchTerm, activeTab, fetchGuests, fetchStats]);
 
   useEffect(() => {
     const channel = supabase
@@ -104,7 +105,7 @@ const Index = () => {
         { event: '*', schema: 'public', table: 'guests' },
         () => {
           fetchStats();
-          fetchGuests(page, searchTerm);
+          fetchGuests(page, searchTerm, activeTab);
         }
       )
       .subscribe();
@@ -112,7 +113,7 @@ const Index = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchStats, fetchGuests, page, searchTerm]);
+  }, [fetchStats, fetchGuests, page, searchTerm, activeTab]);
 
   const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
@@ -142,8 +143,11 @@ const Index = () => {
     } else {
       showSuccess(`${name} adicionado!`);
       logAction('Adicionar Convidado', `Adicionou ${name}`);
-      setPage(0);
-      fetchGuests(0, searchTerm);
+      // Se adicionou uma cortesia e está na aba de pagantes (ou vice-versa), avisa o usuário
+      if ((isCourtesy && activeTab === 'paying') || (!isCourtesy && activeTab === 'courtesy')) {
+        showSuccess(`Dica: O convidado foi adicionado na aba de ${isCourtesy ? 'Cortesias' : 'Pagantes'}.`);
+      }
+      fetchGuests(page, searchTerm, activeTab);
       fetchStats();
     }
   };
@@ -163,7 +167,7 @@ const Index = () => {
       showError('Erro ao atualizar presença.');
     } else {
       fetchStats();
-      fetchGuests(page, searchTerm);
+      fetchGuests(page, searchTerm, activeTab);
       
       if (newStatus) {
         showSuccess(`${guest.name} chegou! 🎉`);
@@ -188,7 +192,7 @@ const Index = () => {
       showError('Erro ao excluir convidado.');
     } else {
       fetchStats();
-      fetchGuests(page, searchTerm);
+      fetchGuests(page, searchTerm, activeTab);
       if (guest) {
         logAction('Excluir Convidado', `Removeu ${guest.name}`);
       }
@@ -197,8 +201,6 @@ const Index = () => {
   };
 
   const totalPages = Math.ceil(filteredTotal / PAGE_SIZE);
-  const payingGuests = guests.filter(g => !g.isCourtesy);
-  const courtesyGuests = guests.filter(g => g.isCourtesy);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -226,7 +228,7 @@ const Index = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => { setPage(0); fetchGuests(0, searchTerm); fetchStats(); }}
+              onClick={() => { fetchGuests(page, searchTerm, activeTab); fetchStats(); }}
               className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
             >
               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
@@ -265,110 +267,111 @@ const Index = () => {
           />
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <RefreshCw className="animate-spin mx-auto text-slate-400 mb-2" />
-            <p className="text-slate-500">Carregando lista...</p>
-          </div>
-        ) : (
-          <Tabs defaultValue="paying" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
-              <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                <CreditCard size={16} className="mr-2" /> Pagantes
-              </TabsTrigger>
-              <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                <Gift size={16} className="mr-2" /> Cortesias
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
+            <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <CreditCard size={16} className="mr-2" /> Pagantes
+            </TabsTrigger>
+            <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Gift size={16} className="mr-2" /> Cortesias
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="paying" className="space-y-1">
-              {payingGuests.length > 0 ? (
-                payingGuests.map(guest => (
-                  <GuestCard
-                    key={guest.id}
-                    guest={guest}
-                    onTogglePresence={togglePresence}
-                    onDelete={deleteGuest}
-                    canDelete={canDeleteGuests}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhum pagante nesta página.</p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="courtesy" className="space-y-1">
-              {courtesyGuests.length > 0 ? (
-                courtesyGuests.map(guest => (
-                  <GuestCard
-                    key={guest.id}
-                    guest={guest}
-                    onTogglePresence={togglePresence}
-                    onDelete={deleteGuest}
-                    canDelete={canDeleteGuests}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-muted-foreground">Nenhuma cortesia nesta página.</p>
-                </div>
-              )}
-            </TabsContent>
-
-            {totalPages > 1 && (
-              <div className="mt-8 flex flex-col items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setPage(prev => Math.max(0, prev - 1))}
-                    disabled={page === 0}
-                    className="rounded-xl border-slate-200"
-                  >
-                    <ChevronLeft size={18} />
-                  </Button>
-                  
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      // Lógica simples para mostrar páginas próximas à atual
-                      let pageNum = i;
-                      if (totalPages > 5 && page > 2) {
-                        pageNum = Math.min(page - 2 + i, totalPages - 1);
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={page === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setPage(pageNum)}
-                          className={`w-10 h-10 rounded-xl ${page === pageNum ? "bg-black text-white" : "border-slate-200 text-slate-600"}`}
-                        >
-                          {pageNum + 1}
-                        </Button>
-                      );
-                    })}
+          {loading ? (
+            <div className="text-center py-12">
+              <RefreshCw className="animate-spin mx-auto text-slate-400 mb-2" />
+              <p className="text-slate-500">Carregando lista...</p>
+            </div>
+          ) : (
+            <>
+              <TabsContent value="paying" className="space-y-1 mt-0">
+                {guests.length > 0 ? (
+                  guests.map(guest => (
+                    <GuestCard
+                      key={guest.id}
+                      guest={guest}
+                      onTogglePresence={togglePresence}
+                      onDelete={deleteGuest}
+                      canDelete={canDeleteGuests}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                    <p className="text-muted-foreground">Nenhum pagante encontrado.</p>
                   </div>
+                )}
+              </TabsContent>
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
-                    disabled={page === totalPages - 1}
-                    className="rounded-xl border-slate-200"
-                  >
-                    <ChevronRight size={18} />
-                  </Button>
+              <TabsContent value="courtesy" className="space-y-1 mt-0">
+                {guests.length > 0 ? (
+                  guests.map(guest => (
+                    <GuestCard
+                      key={guest.id}
+                      guest={guest}
+                      onTogglePresence={togglePresence}
+                      onDelete={deleteGuest}
+                      canDelete={canDeleteGuests}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                    <p className="text-muted-foreground">Nenhuma cortesia encontrada.</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                      disabled={page === 0}
+                      className="rounded-xl border-slate-200"
+                    >
+                      <ChevronLeft size={18} />
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum = i;
+                        if (totalPages > 5 && page > 2) {
+                          pageNum = Math.min(page - 2 + i, totalPages - 1);
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPage(pageNum)}
+                            className={`w-10 h-10 rounded-xl ${page === pageNum ? "bg-black text-white" : "border-slate-200 text-slate-600"}`}
+                          >
+                            {pageNum + 1}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
+                      disabled={page === totalPages - 1}
+                      className="rounded-xl border-slate-200"
+                    >
+                      <ChevronRight size={18} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Página {page + 1} de {totalPages} ({filteredTotal} resultados nesta categoria)
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400">
-                  Página {page + 1} de {totalPages} ({filteredTotal} resultados)
-                </p>
-              </div>
-            )}
-          </Tabs>
-        )}
+              )}
+            </>
+          )}
+        </Tabs>
       </main>
       
       <Footer />
