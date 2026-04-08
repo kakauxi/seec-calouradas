@@ -31,66 +31,64 @@ const GuestCard = ({ guest, onTogglePresence, onDelete, canDelete = true }: Gues
 
   const handlePresenceClick = () => {
     if (guest.isPresent) {
-      // Se já está presente, pede confirmação para remover
       setShowPresenceConfirm(true);
     } else {
-      // Se não está presente, confirma direto para agilizar
       onTogglePresence(guest.id);
     }
   };
 
   return (
     <Card className={cn(
-      "p-4 mb-3 transition-all duration-300 border-l-4",
+      "p-3 sm:p-4 transition-all duration-300 border-l-4",
       guest.isPresent ? "border-l-green-500 bg-green-50/30" : "border-l-slate-900 bg-white"
     )}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
             <h3 className={cn(
-              "font-semibold text-lg",
+              "font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none",
               guest.isPresent && "text-green-700 line-through opacity-70"
             )}>
               {guest.name}
             </h3>
             {guest.isCourtesy && (
-              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-none flex items-center gap-1">
-                <Gift size={12} /> Cortesia
+              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-none flex items-center gap-1 text-[10px] px-1.5 py-0">
+                <Gift size={10} /> Cortesia
               </Badge>
             )}
           </div>
-          <div className="flex items-center text-sm text-muted-foreground mt-1">
-            <Phone size={14} className="mr-1" />
-            {guest.phone}
+          <div className="flex items-center text-[11px] sm:text-sm text-muted-foreground mt-0.5">
+            <Phone size={12} className="mr-1 shrink-0" />
+            <span className="truncate">{guest.phone || 'Sem contato'}</span>
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:bg-destructive/10 h-8 w-8 sm:h-9 sm:w-9"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={16} />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="rounded-2xl">
+              <AlertDialogContent className="rounded-2xl w-[90%] max-w-sm mx-auto">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir convidado?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja remover <strong>{guest.name}</strong> da lista? Esta ação não pode ser desfeita.
+                  <AlertDialogTitle className="text-lg">Excluir convidado?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm">
+                    Remover <strong>{guest.name}</strong> da lista?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                <AlertDialogFooter className="flex-row gap-2 sm:gap-0">
+                  <AlertDialogCancel className="rounded-xl flex-1 mt-0">Não</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={() => onDelete(guest.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl flex-1"
                   >
-                    Confirmar Exclusão
+                    Sim
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -103,37 +101,36 @@ const GuestCard = ({ guest, onTogglePresence, onDelete, canDelete = true }: Gues
               size="sm"
               onClick={handlePresenceClick}
               className={cn(
-                "rounded-full px-4",
+                "rounded-full px-3 sm:px-4 h-8 sm:h-9 text-[11px] sm:text-xs font-bold",
                 guest.isPresent ? "bg-green-600 hover:bg-green-700" : "border-slate-200 text-slate-900 hover:bg-slate-50"
               )}
             >
               {guest.isPresent ? (
-                <><CheckCircle2 size={16} className="mr-2" /> Presente</>
+                <><CheckCircle2 size={14} className="mr-1.5" /> Presente</>
               ) : (
-                <><Circle size={16} className="mr-2" /> Confirmar</>
+                <><Circle size={14} className="mr-1.5" /> Confirmar</>
               )}
             </Button>
-            <AlertDialogContent className="rounded-2xl">
+            <AlertDialogContent className="rounded-2xl w-[90%] max-w-sm mx-auto">
               <AlertDialogHeader>
-                <div className="flex items-center gap-2 text-amber-600 mb-2">
-                  <AlertTriangle size={20} />
-                  <AlertDialogTitle>Remover presença?</AlertDialogTitle>
+                <div className="flex items-center gap-2 text-amber-600 mb-1">
+                  <AlertTriangle size={18} />
+                  <AlertDialogTitle className="text-lg">Remover presença?</AlertDialogTitle>
                 </div>
-                <AlertDialogDescription>
-                  Você está prestes a remover a confirmação de presença de <strong>{guest.name}</strong>. 
-                  Deseja continuar?
+                <AlertDialogDescription className="text-sm">
+                  Deseja remover a confirmação de <strong>{guest.name}</strong>?
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+              <AlertDialogFooter className="flex-row gap-2 sm:gap-0">
+                <AlertDialogCancel className="rounded-xl flex-1 mt-0">Cancelar</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={() => {
                     onTogglePresence(guest.id);
                     setShowPresenceConfirm(false);
                   }}
-                  className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl"
+                  className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl flex-1"
                 >
-                  Sim, remover presença
+                  Confirmar
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

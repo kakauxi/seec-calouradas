@@ -53,7 +53,7 @@ const Index = () => {
     let query = supabase
       .from('guests')
       .select('*', { count: 'exact' })
-      .eq('is_courtesy', tab === 'courtesy') // Filtra por tipo na consulta
+      .eq('is_courtesy', tab === 'courtesy')
       .order('name', { ascending: true })
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -82,12 +82,10 @@ const Index = () => {
     setLoading(false);
   }, []);
 
-  // Resetar página ao trocar de aba ou buscar
   useEffect(() => {
     setPage(0);
   }, [activeTab, searchTerm]);
 
-  // Buscar dados quando página, aba ou busca mudar
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchGuests(page, searchTerm, activeTab);
@@ -143,10 +141,6 @@ const Index = () => {
     } else {
       showSuccess(`${name} adicionado!`);
       logAction('Adicionar Convidado', `Adicionou ${name}`);
-      // Se adicionou uma cortesia e está na aba de pagantes (ou vice-versa), avisa o usuário
-      if ((isCourtesy && activeTab === 'paying') || (!isCourtesy && activeTab === 'courtesy')) {
-        showSuccess(`Dica: O convidado foi adicionado na aba de ${isCourtesy ? 'Cortesias' : 'Pagantes'}.`);
-      }
       fetchGuests(page, searchTerm, activeTab);
       fetchStats();
     }
@@ -204,39 +198,39 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-black text-white py-6 px-4 shadow-lg mb-8">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+      <header className="bg-black text-white py-4 px-4 shadow-lg mb-6 sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
               <img 
                 src="/logo.png" 
                 alt="SEEC Logo" 
                 className="w-full h-full object-contain p-1"
               />
             </div>
-            <div>
-              <h1 className="text-xl font-bold">No Sigilo (SEEC/SPOTTED) Check-in</h1>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold truncate">No Sigilo Check-in</h1>
               <div className="flex items-center gap-2">
-                <p className="text-slate-400 text-xs">{user?.email}</p>
-                <span className="bg-white/10 text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                  {role === 'admin_master' ? 'Admin' : role === 'coordenador' ? 'Coordenador' : role === 'membro' ? 'Membro' : 'Usuário'}
+                <p className="text-slate-400 text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-none">{user?.email}</p>
+                <span className="bg-white/10 text-white text-[8px] sm:text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
+                  {role === 'admin_master' ? 'Admin' : role === 'coordenador' ? 'Coord' : 'Membro'}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => { fetchGuests(page, searchTerm, activeTab); fetchStats(); }}
-              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full h-9 w-9"
             >
-              <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </Button>
             {role === 'admin_master' && (
               <Link to="/admin">
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full">
-                  <Settings size={20} />
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full h-9 w-9">
+                  <Settings size={18} />
                 </Button>
               </Link>
             )}
@@ -244,15 +238,15 @@ const Index = () => {
               variant="ghost" 
               size="icon" 
               onClick={signOut}
-              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full"
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full h-9 w-9"
             >
-              <LogOut size={20} />
+              <LogOut size={18} />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-12">
+      <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-8">
         <GuestStats total={totalCount} present={presentCount} />
         
         {canAddGuests && <AddGuestForm onAdd={addGuest} />}
@@ -263,28 +257,28 @@ const Index = () => {
             placeholder="Buscar por nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 py-6 bg-white border-none shadow-sm rounded-xl"
+            className="pl-10 py-5 bg-white border-none shadow-sm rounded-xl text-sm"
           />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1">
-            <TabsTrigger value="paying" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <CreditCard size={16} className="mr-2" /> Pagantes
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-200 rounded-xl p-1 h-11">
+            <TabsTrigger value="paying" className="rounded-lg text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <CreditCard size={14} className="mr-1.5 sm:mr-2" /> Pagantes
             </TabsTrigger>
-            <TabsTrigger value="courtesy" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Gift size={16} className="mr-2" /> Cortesias
+            <TabsTrigger value="courtesy" className="rounded-lg text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Gift size={14} className="mr-1.5 sm:mr-2" /> Cortesias
             </TabsTrigger>
           </TabsList>
 
           {loading ? (
             <div className="text-center py-12">
               <RefreshCw className="animate-spin mx-auto text-slate-400 mb-2" />
-              <p className="text-slate-500">Carregando lista...</p>
+              <p className="text-slate-500 text-sm">Carregando lista...</p>
             </div>
           ) : (
             <>
-              <TabsContent value="paying" className="space-y-1 mt-0">
+              <div className="space-y-2">
                 {guests.length > 0 ? (
                   guests.map(guest => (
                     <GuestCard
@@ -297,47 +291,29 @@ const Index = () => {
                   ))
                 ) : (
                   <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                    <p className="text-muted-foreground">Nenhum pagante encontrado.</p>
+                    <p className="text-muted-foreground text-sm">Nenhum registro encontrado.</p>
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="courtesy" className="space-y-1 mt-0">
-                {guests.length > 0 ? (
-                  guests.map(guest => (
-                    <GuestCard
-                      key={guest.id}
-                      guest={guest}
-                      onTogglePresence={togglePresence}
-                      onDelete={deleteGuest}
-                      canDelete={canDeleteGuests}
-                    />
-                  ))
-                ) : (
-                  <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                    <p className="text-muted-foreground">Nenhuma cortesia encontrada.</p>
-                  </div>
-                )}
-              </TabsContent>
+              </div>
 
               {totalPages > 1 && (
-                <div className="mt-8 flex flex-col items-center gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-1.5">
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => setPage(prev => Math.max(0, prev - 1))}
                       disabled={page === 0}
-                      className="rounded-xl border-slate-200"
+                      className="rounded-lg border-slate-200 h-9 w-9"
                     >
-                      <ChevronLeft size={18} />
+                      <ChevronLeft size={16} />
                     </Button>
                     
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                         let pageNum = i;
-                        if (totalPages > 5 && page > 2) {
-                          pageNum = Math.min(page - 2 + i, totalPages - 1);
+                        if (totalPages > 3 && page > 1) {
+                          pageNum = Math.min(page - 1 + i, totalPages - 1);
                         }
                         
                         return (
@@ -346,7 +322,7 @@ const Index = () => {
                             variant={page === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPage(pageNum)}
-                            className={`w-10 h-10 rounded-xl ${page === pageNum ? "bg-black text-white" : "border-slate-200 text-slate-600"}`}
+                            className={`w-9 h-9 rounded-lg text-xs ${page === pageNum ? "bg-black text-white" : "border-slate-200 text-slate-600"}`}
                           >
                             {pageNum + 1}
                           </Button>
@@ -359,13 +335,13 @@ const Index = () => {
                       size="icon"
                       onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
                       disabled={page === totalPages - 1}
-                      className="rounded-xl border-slate-200"
+                      className="rounded-lg border-slate-200 h-9 w-9"
                     >
-                      <ChevronRight size={18} />
+                      <ChevronRight size={16} />
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Página {page + 1} de {totalPages} ({filteredTotal} resultados nesta categoria)
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                    Página {page + 1} de {totalPages}
                   </p>
                 </div>
               )}
