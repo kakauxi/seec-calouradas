@@ -78,7 +78,11 @@ const Login = () => {
     });
 
     if (error) {
-      showError(error.message);
+      if (error.message.includes('rate limit exceeded')) {
+        showError('Muitas tentativas de cadastro. Por favor, aguarde alguns minutos e tente novamente.');
+      } else {
+        showError(error.message);
+      }
     } else {
       showSuccess('Conta criada! Verifique seu e-mail para confirmar.');
     }
