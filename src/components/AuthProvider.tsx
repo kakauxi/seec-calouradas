@@ -26,24 +26,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string, userEmail?: string) => {
-    // Se for o dono, já define como admin master preventivamente para evitar bloqueios de RLS
-    if (userEmail === OWNER_EMAIL) {
-      setRole('admin_master');
-      setIsApproved(true);
-    }
+    try {
+      // Se for o dono, já define como admin master preventivamente
+      if (userEmail === OWNER_EMAIL) {
+        setRole('admin_master');
+        setIsApproved(true);
+      }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role, is_approved')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (!error && data) {
-      setRole(data.role);
-      setIsApproved(data.is_approved);
-    } else if (userEmail === OWNER_EMAIL) {
-      setRole('admin_master');
-      setIsApproved(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, is_approved')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (!error && data) {
+        setRole(data.role);
+        setIsApproved(data.is_approved);
+      } else if (userEmail === OWNER_EMAIL) {
+        // Reforça acesso do dono mesmo se a query falhar
+        setRole('admin_master');
+        setIsApproved(true);
+      }
+    } catch (err) {
+      console.error("[Auth] Erro ao buscar perfil:", err);
+      // Em caso de erro crítico, se for o dono, garantimos o acesso
+      if (userEmail === OWNER_EMAIL) {
+        setRole('admin_master');
+        setIsApproved(true);
+      }
     }
   };
 
@@ -57,29 +67,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (mounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.email);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchProfile(session.user.id, session.user.email);
+          }
         }
-        setLoading(false);
+      } catch (err) {
+        console.error("[Auth] Erro na inicialização:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
           await fetchProfile(session.user.id, session.user.email);
         } else {
           setRole(null);
           setIsApproved(false);
         }
+        
+        // Garante que o loading saia de true após qualquer mudança de estado
         setLoading(false);
       }
     });
@@ -91,7 +109,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
+    setRole(null);
+    setIsApproved(false);
+    setLoading(false);
   };
 
   return (
