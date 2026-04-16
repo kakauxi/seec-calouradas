@@ -18,7 +18,8 @@ import {
   UserPlus,
   ChevronDown,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,7 +39,7 @@ import {
 const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
 const Admin = () => {
-  const { role, loading: authLoading, refreshProfile } = useAuth();
+  const { role, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -47,23 +48,28 @@ const Admin = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isOwner = user?.email === OWNER_EMAIL;
+
   const fetchData = useCallback(async (silent = false) => {
-    // Se o cargo ainda não foi carregado, não tenta buscar para evitar erro de RLS
-    if (!role) return;
+    // Permite buscar se for o dono ou se o cargo já foi validado como admin_master
+    if (!role && !isOwner) return;
     
     if (!silent) setIsFetching(true);
     
     try {
-      // Buscar perfis - Adicionando um pequeno delay opcional ou retry se necessário
+      console.log("[Admin] Buscando perfis...");
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
         .order('email');
       
-      if (pError) throw pError;
+      if (pError) {
+        console.error("[Admin] Erro ao buscar perfis:", pError);
+        throw pError;
+      }
+      
       setProfiles(profilesData || []);
 
-      // Buscar logs recentes
       const { data: logsData, error: lError } = await supabase
         .from('logs')
         .select('*')
@@ -75,16 +81,16 @@ const Admin = () => {
       }
       setError(null);
     } catch (err: any) {
-      console.error("Erro ao buscar dados:", err);
-      setError(err.message);
-      if (!silent) showError('Erro ao carregar usuários. Verifique sua conexão.');
+      setError(err.message || 'Erro desconhecido ao carregar dados.');
+      if (!silent) showError('Erro de permissão ou conexão ao carregar usuários.');
     } finally {
       if (!silent) setIsFetching(false);
     }
-  }, [role]);
+  }, [role, isOwner]);
 
   useEffect(() => {
-    if (role === 'admin_master') {
+    // Se for o dono ou admin, inicia a busca
+    if (role === 'admin_master' || isOwner) {
       fetchData();
 
       const channel = supabase
@@ -100,7 +106,7 @@ const Admin = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [role, fetchData]);
+  }, [role, isOwner, fetchData]);
 
   const handleManualRefresh = async () => {
     await refreshProfile();
@@ -158,7 +164,7 @@ const Admin = () => {
     </div>
   );
   
-  if (role !== 'admin_master') return <Navigate to="/" />;
+  if (role !== 'admin_master' && !isOwner) return <Navigate to="/" />;
 
   const filteredProfiles = profiles.filter(p => 
     p.email?.toLowerCase().includes(searchUser.toLowerCase())
@@ -198,7 +204,10 @@ const Admin = () => {
                   className="w-full h-full object-contain p-0.5"
                 />
               </div>
-              <h1 className="text-xl font-bold">Painel Admin Master</h1>
+              <div>
+                <h1 className="text-xl font-bold">Painel Admin Master</h1>
+                {isOwner && <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Acesso Proprietário Ativo</p>}
+              </div>
             </div>
           </div>
           <Button 
@@ -221,16 +230,19 @@ const Admin = () => {
                 <AlertCircle size={24} />
               </div>
               <div className="space-y-3">
-                <h3 className="text-lg font-bold text-red-900">Erro ao listar usuários</h3>
+                <h3 className="text-lg font-bold text-red-900">Erro de Sincronização</h3>
                 <p className="text-sm text-red-800 leading-relaxed">
-                  Isso pode acontecer se o banco de dados demorar a responder ou se houver um erro de permissão.
+                  O banco de dados retornou: <code className="bg-red-100 px-1 rounded">{error}</code>. 
+                  Isso geralmente indica que as permissões de segurança (RLS) precisam ser ajustadas no Supabase.
                 </p>
-                <Button 
-                  onClick={handleManualRefresh} 
-                  className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
-                >
-                  <RefreshCw size={16} className="mr-2" /> Tentar Sincronizar Novamente
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleManualRefresh} 
+                    className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                  >
+                    <RefreshCw size={16} className="mr-2" /> Tentar Novamente
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
@@ -265,18 +277,18 @@ const Admin = () => {
                 </div>
               ) : filteredProfiles.length > 0 ? (
                 filteredProfiles.map(profile => {
-                  const isOwner = profile.email === OWNER_EMAIL;
+                  const isProfileOwner = profile.email === OWNER_EMAIL;
                   const isProcessing = processingId === profile.id;
                   
                   return (
                     <Card key={profile.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-none shadow-sm gap-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
-                          {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
+                          {isProfileOwner ? <ShieldCheck size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">
-                            {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
+                            {profile.email} {isProfileOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
                           </p>
                           <div className="flex gap-2 mt-1">
                             {getRoleBadge(profile.role)}
@@ -291,7 +303,7 @@ const Admin = () => {
                         <Button 
                           variant={profile.is_approved ? "outline" : "default"}
                           size="sm"
-                          disabled={isOwner || isProcessing}
+                          disabled={isProfileOwner || isProcessing}
                           onClick={() => toggleApproval(profile.id, profile.is_approved, profile.email)}
                           className={profile.is_approved ? "text-slate-600" : "bg-green-600 hover:bg-green-700 text-white"}
                         >
@@ -306,7 +318,7 @@ const Admin = () => {
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" disabled={isOwner || isProcessing} className="text-slate-500">
+                            <Button variant="ghost" size="sm" disabled={isProfileOwner || isProcessing} className="text-slate-500">
                               Cargo <ChevronDown size={14} className="ml-1" />
                             </Button>
                           </DropdownMenuTrigger>
