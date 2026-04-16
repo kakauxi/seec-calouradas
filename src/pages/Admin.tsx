@@ -51,22 +51,17 @@ const Admin = () => {
   const isOwner = user?.email === OWNER_EMAIL;
 
   const fetchData = useCallback(async (silent = false) => {
-    // Permite buscar se for o dono ou se o cargo já foi validado como admin_master
     if (!role && !isOwner) return;
     
     if (!silent) setIsFetching(true);
     
     try {
-      console.log("[Admin] Buscando perfis...");
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
         .order('email');
       
-      if (pError) {
-        console.error("[Admin] Erro ao buscar perfis:", pError);
-        throw pError;
-      }
+      if (pError) throw pError;
       
       setProfiles(profilesData || []);
 
@@ -81,15 +76,19 @@ const Admin = () => {
       }
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Erro desconhecido ao carregar dados.');
-      if (!silent) showError('Erro de permissão ou conexão ao carregar usuários.');
+      console.error("[Admin] Erro:", err);
+      // Se for erro de recursão, mostramos uma mensagem específica
+      if (err.message?.includes('infinite recursion')) {
+        setError('Erro de recursão no banco de dados. Por favor, aplique a correção SQL sugerida.');
+      } else {
+        setError(err.message || 'Erro ao carregar dados.');
+      }
     } finally {
       if (!silent) setIsFetching(false);
     }
   }, [role, isOwner]);
 
   useEffect(() => {
-    // Se for o dono ou admin, inicia a busca
     if (role === 'admin_master' || isOwner) {
       fetchData();
 
@@ -232,8 +231,7 @@ const Admin = () => {
               <div className="space-y-3">
                 <h3 className="text-lg font-bold text-red-900">Erro de Sincronização</h3>
                 <p className="text-sm text-red-800 leading-relaxed">
-                  O banco de dados retornou: <code className="bg-red-100 px-1 rounded">{error}</code>. 
-                  Isso geralmente indica que as permissões de segurança (RLS) precisam ser ajustadas no Supabase.
+                  {error}
                 </p>
                 <div className="flex gap-3">
                   <Button 
