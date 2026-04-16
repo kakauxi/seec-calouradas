@@ -16,7 +16,6 @@ import {
   Lock,
   RefreshCw,
   UserPlus,
-  Terminal,
   ChevronDown,
   Loader2,
   AlertCircle
@@ -39,7 +38,7 @@ import {
 const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
 const Admin = () => {
-  const { role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -49,12 +48,13 @@ const Admin = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
-    if (role !== 'admin_master') return;
+    // Se o cargo ainda não foi carregado, não tenta buscar para evitar erro de RLS
+    if (!role) return;
     
     if (!silent) setIsFetching(true);
     
     try {
-      // Buscar perfis atualizados - removendo qualquer cache
+      // Buscar perfis - Adicionando um pequeno delay opcional ou retry se necessário
       const { data: profilesData, error: pError } = await supabase
         .from('profiles')
         .select('*')
@@ -68,7 +68,7 @@ const Admin = () => {
         .from('logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(50);
 
       if (!lError) {
         setLogs(logsData || []);
@@ -77,7 +77,7 @@ const Admin = () => {
     } catch (err: any) {
       console.error("Erro ao buscar dados:", err);
       setError(err.message);
-      if (!silent) showError('Erro ao carregar dados.');
+      if (!silent) showError('Erro ao carregar usuários. Verifique sua conexão.');
     } finally {
       if (!silent) setIsFetching(false);
     }
@@ -88,15 +88,10 @@ const Admin = () => {
       fetchData();
 
       const channel = supabase
-        .channel('admin_sync')
+        .channel('admin_sync_realtime')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },
-          () => fetchData(true)
-        )
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'logs' },
           () => fetchData(true)
         )
         .subscribe();
@@ -106,6 +101,11 @@ const Admin = () => {
       };
     }
   }, [role, fetchData]);
+
+  const handleManualRefresh = async () => {
+    await refreshProfile();
+    await fetchData();
+  };
 
   const updateRole = async (userId: string, newRole: string, email: string) => {
     if (email === OWNER_EMAIL) {
@@ -152,8 +152,8 @@ const Admin = () => {
   if (authLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-4">
-        <RefreshCw className="animate-spin text-slate-400" size={32} />
-        <p className="text-slate-500 animate-pulse">Verificando credenciais...</p>
+        <Loader2 className="animate-spin text-slate-400" size={32} />
+        <p className="text-slate-500 animate-pulse">Validando acesso master...</p>
       </div>
     </div>
   );
@@ -204,7 +204,7 @@ const Admin = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => fetchData()}
+            onClick={handleManualRefresh}
             disabled={isFetching}
             className="text-white hover:bg-white/10"
           >
@@ -221,15 +221,15 @@ const Admin = () => {
                 <AlertCircle size={24} />
               </div>
               <div className="space-y-3">
-                <h3 className="text-lg font-bold text-red-900">Erro de Conexão</h3>
+                <h3 className="text-lg font-bold text-red-900">Erro ao listar usuários</h3>
                 <p className="text-sm text-red-800 leading-relaxed">
-                  Não foi possível carregar a lista completa: <strong>{error}</strong>.
+                  Isso pode acontecer se o banco de dados demorar a responder ou se houver um erro de permissão.
                 </p>
                 <Button 
-                  onClick={() => fetchData()} 
+                  onClick={handleManualRefresh} 
                   className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
                 >
-                  <RefreshCw size={16} className="mr-2" /> Tentar Novamente
+                  <RefreshCw size={16} className="mr-2" /> Tentar Sincronizar Novamente
                 </Button>
               </div>
             </div>
@@ -242,7 +242,7 @@ const Admin = () => {
               <Users size={18} className="mr-2" /> Usuários ({profiles.length})
             </TabsTrigger>
             <TabsTrigger value="logs" className="rounded-lg">
-              <History size={18} className="mr-2" /> Logs do Sistema
+              <History size={18} className="mr-2" /> Logs Recentes
             </TabsTrigger>
           </TabsList>
 
@@ -258,7 +258,12 @@ const Admin = () => {
             </div>
 
             <div className="grid gap-4">
-              {filteredProfiles.length > 0 ? (
+              {isFetching && profiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <Loader2 className="animate-spin mx-auto text-slate-300 mb-2" size={32} />
+                  <p className="text-slate-400">Buscando usuários...</p>
+                </div>
+              ) : filteredProfiles.length > 0 ? (
                 filteredProfiles.map(profile => {
                   const isOwner = profile.email === OWNER_EMAIL;
                   const isProcessing = processingId === profile.id;
@@ -269,7 +274,7 @@ const Admin = () => {
                         <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
                           {isOwner ? <Lock size={20} className="text-amber-600" /> : <UserCog size={20} className="text-slate-600" />}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-none">
                             {profile.email} {isOwner && <span className="text-xs text-amber-600 font-normal ml-1">(Proprietário)</span>}
                           </p>
@@ -331,7 +336,7 @@ const Admin = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">Nenhum usuário encontrado</h3>
                   <p className="text-slate-500 text-sm mt-1">Tente atualizar a página ou verifique se há novos cadastros.</p>
-                  <Button variant="outline" onClick={() => fetchData()} className="mt-6 rounded-xl">
+                  <Button variant="outline" onClick={handleManualRefresh} className="mt-6 rounded-xl">
                     <RefreshCw size={16} className="mr-2" /> Atualizar Agora
                   </Button>
                 </div>

@@ -13,6 +13,7 @@ interface AuthContextType {
   isApproved: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string, userEmail?: string) => {
-    // Se for o dono, já define como admin master preventivamente
+    // Se for o dono, já define como admin master preventivamente para evitar bloqueios de RLS
     if (userEmail === OWNER_EMAIL) {
       setRole('admin_master');
       setIsApproved(true);
@@ -35,38 +36,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from('profiles')
       .select('role, is_approved')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
     if (!error && data) {
       setRole(data.role);
       setIsApproved(data.is_approved);
     } else if (userEmail === OWNER_EMAIL) {
-      // Fallback caso o perfil ainda não tenha sido criado pelo trigger
       setRole('admin_master');
       setIsApproved(true);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id, user.email);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchProfile(session.user.id, session.user.email);
+          await fetchProfile(session.user.id, session.user.email);
         }
         setLoading(false);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (mounted) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchProfile(session.user.id, session.user.email);
+          await fetchProfile(session.user.id, session.user.email);
         } else {
           setRole(null);
           setIsApproved(false);
@@ -86,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role, isApproved, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, role, isApproved, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
