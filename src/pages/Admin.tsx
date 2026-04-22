@@ -20,7 +20,9 @@ import {
   AlertCircle,
   ShieldCheck,
   Settings2,
-  Save
+  Save,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -37,6 +39,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { logAction } from '@/utils/logger';
 
 const OWNER_EMAIL = 'kakauxi.neto@aluno.uece.br';
 
@@ -53,6 +67,7 @@ const Admin = () => {
   const [error, setError] = useState<string | null>(null);
   const [newAppName, setNewAppName] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const isOwner = user?.email === OWNER_EMAIL;
 
@@ -127,8 +142,29 @@ const Admin = () => {
       showError('Erro ao atualizar nome do app.');
     } else {
       showSuccess('Nome do aplicativo atualizado!');
+      logAction('Alterar Nome App', `Novo nome: ${newAppName}`);
     }
     setIsSavingName(false);
+  };
+
+  const handleResetGuests = async () => {
+    setIsResetting(true);
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta todos os registros
+
+      if (error) throw error;
+
+      showSuccess('Lista de convidados resetada com sucesso!');
+      logAction('Reset de Dados', 'Limpou toda a lista de convidados para novo evento');
+    } catch (err) {
+      showError('Erro ao resetar dados.');
+      console.error(err);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const updateRole = async (userId: string, newRole: string, email: string) => {
@@ -147,6 +183,7 @@ const Admin = () => {
       showError('Erro ao atualizar permissão.');
     } else {
       showSuccess(`Cargo de ${email} atualizado!`);
+      logAction('Alterar Cargo', `Usuário ${email} agora é ${newRole}`);
       fetchData(true);
     }
     setProcessingId(null);
@@ -168,6 +205,7 @@ const Admin = () => {
       showError('Erro ao atualizar status de aprovação.');
     } else {
       showSuccess(currentStatus ? `Acesso de ${email} revogado.` : `Usuário ${email} aprovado!`);
+      logAction(currentStatus ? 'Revogar Acesso' : 'Aprovar Usuário', `Usuário: ${email}`);
       fetchData(true);
     }
     setProcessingId(null);
@@ -363,39 +401,88 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card className="p-8 bg-white border-none shadow-sm rounded-3xl">
-              <div className="max-w-md space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-slate-900 mb-1">
-                    <Settings2 size={20} className="text-slate-400" />
-                    <h3 className="text-lg font-bold">Identidade do Aplicativo</h3>
+            <div className="space-y-6">
+              <Card className="p-8 bg-white border-none shadow-sm rounded-3xl">
+                <div className="max-w-md space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-slate-900 mb-1">
+                      <Settings2 size={20} className="text-slate-400" />
+                      <h3 className="text-lg font-bold">Identidade do Aplicativo</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 mb-4">
+                      Altere o nome que aparece no topo do app, na tela de login e nos documentos de impressão.
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Altere o nome que aparece no topo do app, na tela de login e nos documentos de impressão.
-                  </p>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="app-name" className="text-slate-700 font-medium">Nome da Festa / Evento</Label>
-                  <Input 
-                    id="app-name"
-                    value={newAppName}
-                    onChange={(e) => setNewAppName(e.target.value)}
-                    placeholder="Ex: No Sigilo (SEEC/SPOTTED)"
-                    className="py-6 rounded-xl border-slate-200 focus:ring-black"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="app-name" className="text-slate-700 font-medium">Nome da Festa / Evento</Label>
+                    <Input 
+                      id="app-name"
+                      value={newAppName}
+                      onChange={(e) => setNewAppName(e.target.value)}
+                      placeholder="Ex: No Sigilo (SEEC/SPOTTED)"
+                      className="py-6 rounded-xl border-slate-200 focus:ring-black"
+                    />
+                  </div>
 
-                <Button 
-                  onClick={handleSaveAppName} 
-                  disabled={isSavingName || !newAppName.trim() || newAppName === appName}
-                  className="w-full bg-black hover:bg-slate-800 text-white rounded-xl py-6 font-bold transition-all"
-                >
-                  {isSavingName ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
-                  Salvar Alterações
-                </Button>
-              </div>
-            </Card>
+                  <Button 
+                    onClick={handleSaveAppName} 
+                    disabled={isSavingName || !newAppName.trim() || newAppName === appName}
+                    className="w-full bg-black hover:bg-slate-800 text-white rounded-xl py-6 font-bold transition-all"
+                  >
+                    {isSavingName ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
+                    Salvar Alterações
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="p-8 bg-white border-none shadow-sm rounded-3xl border-l-4 border-l-red-500">
+                <div className="max-w-md space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-red-600 mb-1">
+                      <AlertTriangle size={20} />
+                      <h3 className="text-lg font-bold">Zona de Perigo</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 mb-4">
+                      Use esta opção para limpar todos os convidados e preparar o sistema para um novo evento. Esta ação não pode ser desfeita.
+                    </p>
+                  </div>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive"
+                        className="w-full rounded-xl py-6 font-bold flex items-center justify-center gap-2"
+                      >
+                        <Trash2 size={18} /> Resetar Lista de Convidados
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-3xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                          <AlertTriangle size={20} /> Confirmar Reset Total?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600">
+                          Isso irá excluir permanentemente **TODOS** os convidados da lista (pagantes e cortesias). 
+                          Certifique-se de ter exportado a lista anterior se necessário.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleResetGuests}
+                          className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                          disabled={isResetting}
+                        >
+                          {isResetting ? <Loader2 className="animate-spin mr-2" /> : null}
+                          Sim, Excluir Tudo
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="logs">
