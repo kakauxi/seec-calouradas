@@ -8,13 +8,14 @@ import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
 import { Link } from 'react-router-dom';
 import { logAction } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
+import { exportGuestListToPdf } from '@/utils/exportPdf';
 
 const PAGE_SIZE = 20;
 
@@ -28,9 +29,11 @@ const Index = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [presentCount, setPresentCount] = useState(0);
   const [filteredTotal, setFilteredTotal] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const canAddGuests = role === 'admin_master' || role === 'coordenador';
-  const canDeleteGuests = role === 'admin_master';
+  const isAdmin = role === 'admin_master';
+  const canAddGuests = isAdmin || role === 'coordenador';
+  const canDeleteGuests = isAdmin;
 
   const fetchStats = useCallback(async () => {
     const { count, error } = await supabase
@@ -112,6 +115,39 @@ const Index = () => {
       supabase.removeChannel(channel);
     };
   }, [fetchStats, fetchGuests, page, searchTerm, activeTab]);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // Busca TODOS os convidados para o PDF, não apenas a página atual
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('is_courtesy', activeTab === 'courtesy')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      if (data) {
+        const formatted = data.map(g => ({
+          id: g.id,
+          name: g.name,
+          phone: g.phone || '',
+          isPresent: g.is_present,
+          isCourtesy: g.is_courtesy,
+          createdAt: new Date(g.created_at).getTime()
+        }));
+        
+        exportGuestListToPdf(formatted, activeTab as 'paying' | 'courtesy');
+        showSuccess('PDF gerado com sucesso!');
+        logAction('Exportar PDF', `Exportou lista de ${activeTab}`);
+      }
+    } catch (err) {
+      showError('Erro ao gerar PDF.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const addGuest = async (name: string, phone: string, isCourtesy: boolean) => {
     if (!canAddGuests) return;
@@ -227,7 +263,7 @@ const Index = () => {
             >
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </Button>
-            {role === 'admin_master' && (
+            {isAdmin && (
               <Link to="/admin">
                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full h-9 w-9">
                   <Settings size={18} />
@@ -251,14 +287,25 @@ const Index = () => {
         
         {canAddGuests && <AddGuestForm onAdd={addGuest} />}
 
-        <div className="mb-6 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input
-            placeholder="Buscar por nome..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 py-5 bg-white border-none shadow-sm rounded-xl text-sm"
-          />
+        <div className="mb-6 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <Input
+              placeholder="Buscar por nome..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 py-5 bg-white border-none shadow-sm rounded-xl text-sm"
+            />
+          </div>
+          {isAdmin && (
+            <Button 
+              onClick={handleExport} 
+              disabled={isExporting}
+              className="bg-white text-black hover:bg-slate-100 border-none shadow-sm rounded-xl h-auto px-4"
+            >
+              {isExporting ? <RefreshCw size={18} className="animate-spin" /> : <FileDown size={18} />}
+            </Button>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
