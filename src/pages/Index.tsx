@@ -6,22 +6,23 @@ import AddGuestForm from '@/components/AddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
+import PrintList from '@/components/PrintList';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
 import { Link } from 'react-router-dom';
 import { logAction } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
-import { exportGuestListToPdf } from '@/utils/exportPdf';
 
 const PAGE_SIZE = 20;
 
 const Index = () => {
   const { signOut, user, role } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [allGuestsForPrint, setAllGuestsForPrint] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('paying');
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,6 @@ const Index = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [presentCount, setPresentCount] = useState(0);
   const [filteredTotal, setFilteredTotal] = useState(0);
-  const [isExporting, setIsExporting] = useState(false);
 
   const isAdmin = role === 'admin_master';
   const canAddGuests = isAdmin || role === 'coordenador';
@@ -98,28 +98,9 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [page, searchTerm, activeTab, fetchGuests, fetchStats]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('guests-realtime-index')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'guests' },
-        () => {
-          fetchStats();
-          fetchGuests(page, searchTerm, activeTab);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchStats, fetchGuests, page, searchTerm, activeTab]);
-
-  const handleExport = async () => {
-    setIsExporting(true);
+  const handlePrint = async () => {
     try {
-      // Busca TODOS os convidados para o PDF, não apenas a página atual
+      // Busca TODOS os convidados da categoria atual para a impressão
       const { data, error } = await supabase
         .from('guests')
         .select('*')
@@ -138,14 +119,16 @@ const Index = () => {
           createdAt: new Date(g.created_at).getTime()
         }));
         
-        exportGuestListToPdf(formatted, activeTab as 'paying' | 'courtesy');
-        showSuccess('PDF gerado com sucesso!');
-        logAction('Exportar PDF', `Exportou lista de ${activeTab}`);
+        setAllGuestsForPrint(formatted);
+        
+        // Pequeno delay para garantir que o React renderizou o componente oculto
+        setTimeout(() => {
+          window.print();
+          logAction('Imprimir Lista', `Imprimiu lista de ${activeTab}`);
+        }, 100);
       }
     } catch (err) {
-      showError('Erro ao gerar PDF.');
-    } finally {
-      setIsExporting(false);
+      showError('Erro ao preparar lista para impressão.');
     }
   };
 
@@ -234,7 +217,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-black text-white py-4 px-4 shadow-lg mb-6 sticky top-0 z-50">
+      {/* Componente de Impressão (Oculto na tela, visível apenas no papel/PDF) */}
+      <PrintList guests={allGuestsForPrint} type={activeTab} />
+
+      <header className="bg-black text-white py-4 px-4 shadow-lg mb-6 sticky top-0 z-50 print:hidden">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
@@ -282,7 +268,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-8">
+      <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-8 print:hidden">
         <GuestStats total={totalCount} present={presentCount} />
         
         {canAddGuests && <AddGuestForm onAdd={addGuest} />}
@@ -299,11 +285,11 @@ const Index = () => {
           </div>
           {isAdmin && (
             <Button 
-              onClick={handleExport} 
-              disabled={isExporting}
+              onClick={handlePrint} 
               className="bg-white text-black hover:bg-slate-100 border-none shadow-sm rounded-xl h-auto px-4"
+              title="Imprimir Lista / Salvar PDF"
             >
-              {isExporting ? <RefreshCw size={18} className="animate-spin" /> : <FileDown size={18} />}
+              <Printer size={18} />
             </Button>
           )}
         </div>
@@ -397,7 +383,9 @@ const Index = () => {
         </Tabs>
       </main>
       
-      <Footer />
+      <footer className="print:hidden">
+        <Footer />
+      </footer>
     </div>
   );
 };
