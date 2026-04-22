@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Guest } from '@/types/guest';
 import AddGuestForm from '@/components/AddGuestForm';
+import BulkAddGuestForm from '@/components/BulkAddGuestForm';
 import GuestCard from '@/components/GuestCard';
 import GuestStats from '@/components/GuestStats';
 import Footer from '@/components/Footer';
 import PrintList from '@/components/PrintList';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, ChevronRight, Printer, UserPlus, Users } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
@@ -27,6 +28,7 @@ const Index = () => {
   const [allGuestsForPrint, setAllGuestsForPrint] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('paying');
+  const [addMode, setAddMode] = useState<'single' | 'bulk'>('single');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -165,6 +167,29 @@ const Index = () => {
     }
   };
 
+  const addBulkGuests = async (names: string[], isCourtesy: boolean) => {
+    if (!canAddGuests) return;
+
+    const guestsToInsert = names.map(name => ({
+      name: name.trim(),
+      is_courtesy: isCourtesy,
+      is_present: false
+    }));
+
+    const { error } = await supabase
+      .from('guests')
+      .insert(guestsToInsert);
+
+    if (error) {
+      showError('Erro ao salvar lista de convidados.');
+    } else {
+      showSuccess(`${names.length} convidados adicionados!`);
+      logAction('Adição em Massa', `Adicionou ${names.length} convidados`);
+      fetchGuests(page, searchTerm, activeTab);
+      fetchStats();
+    }
+  };
+
   const togglePresence = async (id: string) => {
     const guest = guests.find(g => g.id === id);
     if (!guest) return;
@@ -270,7 +295,40 @@ const Index = () => {
       <main className="max-w-2xl mx-auto px-4 flex-grow w-full pb-8 print:hidden">
         <GuestStats total={totalCount} present={presentCount} />
         
-        {canAddGuests && <AddGuestForm onAdd={addGuest} />}
+        {canAddGuests && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                {addMode === 'single' ? <UserPlus size={16} /> : <Users size={16} />}
+                Adicionar Convidados
+              </h2>
+              <div className="flex bg-slate-200 p-1 rounded-lg">
+                <Button 
+                  variant={addMode === 'single' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setAddMode('single')}
+                  className={`h-7 text-[10px] px-3 rounded-md ${addMode === 'single' ? 'bg-white text-black shadow-sm hover:bg-white' : 'text-slate-600'}`}
+                >
+                  Individual
+                </Button>
+                <Button 
+                  variant={addMode === 'bulk' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setAddMode('bulk')}
+                  className={`h-7 text-[10px] px-3 rounded-md ${addMode === 'bulk' ? 'bg-white text-black shadow-sm hover:bg-white' : 'text-slate-600'}`}
+                >
+                  Em Massa
+                </Button>
+              </div>
+            </div>
+            
+            {addMode === 'single' ? (
+              <AddGuestForm onAdd={addGuest} />
+            ) : (
+              <BulkAddGuestForm onAddBulk={addBulkGuests} />
+            )}
+          </div>
+        )}
 
         <div className="mb-6 flex gap-2">
           <div className="relative flex-1">
