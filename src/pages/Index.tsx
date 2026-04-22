@@ -13,6 +13,7 @@ import { Search, Gift, CreditCard, LogOut, Settings, RefreshCw, ChevronLeft, Che
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/components/AuthProvider';
+import { useAppSettings } from '@/hooks/useAppSettings';
 import { Link } from 'react-router-dom';
 import { logAction } from '@/utils/logger';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +22,7 @@ const PAGE_SIZE = 20;
 
 const Index = () => {
   const { signOut, user, role } = useAuth();
+  const { appName } = useAppSettings();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [allGuestsForPrint, setAllGuestsForPrint] = useState<Guest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +102,6 @@ const Index = () => {
 
   const handlePrint = async () => {
     try {
-      // Busca TODOS os convidados da categoria atual para a impressão
       const { data, error } = await supabase
         .from('guests')
         .select('*')
@@ -121,7 +122,6 @@ const Index = () => {
         
         setAllGuestsForPrint(formatted);
         
-        // Pequeno delay para garantir que o React renderizou o componente oculto
         setTimeout(() => {
           window.print();
           logAction('Imprimir Lista', `Imprimiu lista de ${activeTab}`);
@@ -217,8 +217,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Componente de Impressão (Oculto na tela, visível apenas no papel/PDF) */}
-      <PrintList guests={allGuestsForPrint} type={activeTab} />
+      <PrintList guests={allGuestsForPrint} type={activeTab} appName={appName} />
 
       <header className="bg-black text-white py-4 px-4 shadow-lg mb-6 sticky top-0 z-50 print:hidden">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
@@ -231,7 +230,7 @@ const Index = () => {
               />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold truncate">No Sigilo Check-in</h1>
+              <h1 className="text-base sm:text-lg font-bold truncate">{appName}</h1>
               <div className="flex items-center gap-2">
                 <p className="text-slate-400 text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-none">{user?.email}</p>
                 <span className="bg-white/10 text-white text-[8px] sm:text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">

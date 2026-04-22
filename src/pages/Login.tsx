@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
+import { useAppSettings } from '@/hooks/useAppSettings';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { showError, showSuccess } from '@/utils/toast';
 
 const Login = () => {
   const { session } = useAuth();
+  const { appName } = useAppSettings();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -27,7 +29,6 @@ const Login = () => {
       navigate('/');
     }
     
-    // Carregar e-mail lembrado
     const savedEmail = localStorage.getItem('remembered_email');
     if (savedEmail) {
       setEmail(savedEmail);
@@ -47,7 +48,6 @@ const Login = () => {
     if (error) {
       showError(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos.' : error.message);
     } else {
-      // Salvar ou remover e-mail lembrado
       if (rememberMe) {
         localStorage.setItem('remembered_email', email);
       } else {
@@ -100,7 +100,7 @@ const Login = () => {
               className="w-full h-full object-contain drop-shadow-md"
             />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 text-center">No Sigilo (SEEC/SPOTTED) Check-in</h1>
+          <h1 className="text-2xl font-bold text-slate-900 text-center">{appName}</h1>
           <p className="text-slate-500 text-sm mt-1">Gerencie sua lista de convidados</p>
         </div>
 

@@ -8,9 +8,10 @@ import { ptBR } from 'date-fns/locale';
 interface PrintListProps {
   guests: Guest[];
   type: string;
+  appName: string;
 }
 
-const PrintList = ({ guests, type }: PrintListProps) => {
+const PrintList = ({ guests, type, appName }: PrintListProps) => {
   const dateStr = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   const title = type === 'courtesy' ? 'Lista de Cortesias' : 'Lista de Pagantes';
 
@@ -18,7 +19,7 @@ const PrintList = ({ guests, type }: PrintListProps) => {
     <div className="hidden print:block p-8 bg-white text-black">
       <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold uppercase">No Sigilo (SEEC/SPOTTED)</h1>
+          <h1 className="text-2xl font-bold uppercase">{appName}</h1>
           <h2 className="text-xl font-semibold text-gray-700">{title}</h2>
         </div>
         <div className="text-right text-sm">
